@@ -54,13 +54,13 @@ import { ToastService } from '../../../core/services/toast.service';
           <div class="demo-login-box">
             <span class="demo-label"><i class="fa-solid fa-bolt"></i> Quick Demo Login:</span>
             <div class="demo-buttons">
-              <button type="button" class="btn-demo admin" (click)="fillDemo('admin@college.edu', 'Password123!')">
+              <button type="button" class="btn-demo admin" (click)="fillDemo('admin@campus.edu', 'Demo@1234')">
                 Admin
               </button>
-              <button type="button" class="btn-demo organizer" (click)="fillDemo('acm@college.edu', 'Password123!')">
-                Organizer (ACM)
+              <button type="button" class="btn-demo organizer" (click)="fillDemo('techclub@campus.edu', 'Demo@1234')">
+                Organizer (Tech Club)
               </button>
-              <button type="button" class="btn-demo student" (click)="fillDemo('student1@college.edu', 'Password123!')">
+              <button type="button" class="btn-demo student" (click)="fillDemo('student1@campus.edu', 'Demo@1234')">
                 Student
               </button>
             </div>
@@ -299,7 +299,8 @@ export class LoginComponent {
     this.authService.login(this.loginForm.value).subscribe({
       next: res => {
         this.isLoading = false;
-        this.toastService.success(`Welcome back, ${res.data?.user.name}!`);
+        const user = res.data?.user || res.user;
+        this.toastService.success(`Welcome back, ${user?.name || 'User'}!`);
         
         const returnUrl = this.route.snapshot.queryParams['returnUrl'];
         if (returnUrl) {
@@ -307,7 +308,7 @@ export class LoginComponent {
           return;
         }
 
-        const role = res.data?.user.role;
+        const role = user?.role;
         if (role === 'admin') this.router.navigate(['/admin/dashboard']);
         else if (role === 'organizer') this.router.navigate(['/organizer/dashboard']);
         else this.router.navigate(['/student/dashboard']);

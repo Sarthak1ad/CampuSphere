@@ -32,21 +32,25 @@ export class AuthService {
     }
   }
 
-  register(userData: any): Observable<ApiResponse<{ user: User; token: string }>> {
-    return this.http.post<ApiResponse<{ user: User; token: string }>>(`${this.apiUrl}/register`, userData).pipe(
+  register(userData: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/register`, userData).pipe(
       tap(res => {
-        if (res.success && res.data) {
-          this.setSession(res.data.token, res.data.user);
+        const token = res.data?.token || res.token;
+        const user = res.data?.user || res.user;
+        if (token && user) {
+          this.setSession(token, user);
         }
       })
     );
   }
 
-  login(credentials: { email: string; password: string }): Observable<ApiResponse<{ user: User; token: string }>> {
-    return this.http.post<ApiResponse<{ user: User; token: string }>>(`${this.apiUrl}/login`, credentials).pipe(
+  login(credentials: { email: string; password: string }): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/login`, credentials).pipe(
       tap(res => {
-        if (res.success && res.data) {
-          this.setSession(res.data.token, res.data.user);
+        const token = res.data?.token || res.token;
+        const user = res.data?.user || res.user;
+        if (token && user) {
+          this.setSession(token, user);
         }
       })
     );

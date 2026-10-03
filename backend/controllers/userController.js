@@ -51,19 +51,31 @@ exports.deactivateUser = asyncHandler(async (req, res) => {
 exports.activateUser = asyncHandler(async (req, res) => {
   const user = await User.findByIdAndUpdate(req.params.id, { $set: { isActive: true } }, { new: true });
   if (!user) throw ApiError.notFound('User not found');
-  res.json({ success: true, message: 'User activated' });
+  res.json({ success: true, message: 'User activated', data: user });
+});
+
+exports.toggleActive = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) throw ApiError.notFound('User not found');
+  user.isActive = !user.isActive;
+  await user.save({ validateBeforeSave: false });
+  res.json({ success: true, message: `User ${user.isActive ? 'activated' : 'deactivated'}`, data: user });
 });
 
 // Verify or reject an organizer
+// Accepts: { action: 'verify'|'reject' } OR { status: 'verified'|'rejected' } from frontend
 exports.verifyOrganizer = asyncHandler(async (req, res) => {
-  const { action, reason, adminRating, complianceNotes } = req.body;
-  if (!['verify', 'reject'].includes(action)) throw ApiError.badRequest('Action must be verify or reject');
+  const { action, status, reason, adminRating, complianceNotes, rating } = req.body;
+  // Normalize: frontend sends 'status: verified/rejected', legacy uses 'action: verify/reject'
+  const resolvedAction = action || (status === 'verified' ? 'verify' : status === 'rejected' ? 'reject' : null);
+  const resolvedRating = adminRating ?? rating;
+  if (!['verify', 'reject'].includes(resolvedAction)) throw ApiError.badRequest('Action must be verify or reject');
 
   const update = {
-    'organizerProfile.verificationStatus': action === 'verify' ? 'verified' : 'rejected',
-    'organizerProfile.verifiedAt': action === 'verify' ? new Date() : undefined,
-    'organizerProfile.rejectionReason': action === 'reject' ? reason : undefined,
-    'organizerProfile.adminRating': adminRating,
+    'organizerProfile.verificationStatus': resolvedAction === 'verify' ? 'verified' : 'rejected',
+    'organizerProfile.verifiedAt': resolvedAction === 'verify' ? new Date() : undefined,
+    'organizerProfile.rejectionReason': resolvedAction === 'reject' ? reason : undefined,
+    'organizerProfile.adminRating': resolvedRating,
     'organizerProfile.complianceNotes': complianceNotes,
   };
 
@@ -72,20 +84,21 @@ exports.verifyOrganizer = asyncHandler(async (req, res) => {
 
   await Notification.create({
     user: user._id,
-    type: action === 'verify' ? 'organizer_verified' : 'organizer_rejected',
-    title: `Organizer Profile ${action === 'verify' ? 'Verified' : 'Rejected'}`,
-    message: action === 'verify'
+    type: resolvedAction === 'verify' ? 'organizer_verified' : 'organizer_rejected',
+    title: `Organizer Profile ${resolvedAction === 'verify' ? 'Verified' : 'Rejected'}`,
+    message: resolvedAction === 'verify'
       ? 'Your organizer profile has been verified. You can now create and publish events!'
       : `Your organizer profile was rejected. Reason: ${reason || 'Please contact admin.'}`,
   });
 
   await auditLog({
-    actor: req.user, action: `organizer.${action}`, entity: 'User',
-    entityId: user._id, meta: { reason, adminRating }, ipAddress: req.ip, level: 'warning',
+    actor: req.user, action: `organizer.${resolvedAction}`, entity: 'User',
+    entityId: user._id, meta: { reason, resolvedRating }, ipAddress: req.ip, level: 'warning',
   });
 
-  res.json({ success: true, message: `Organizer ${action}d`, data: user });
+  res.json({ success: true, message: `Organizer ${resolvedAction}d`, data: user });
 });
+
 
 exports.getPlatformFeedback = asyncHandler(async (req, res) => {
   const PlatformFeedback = require('../models/PlatformFeedback');

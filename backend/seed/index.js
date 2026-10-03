@@ -1,21 +1,24 @@
 /**
- * SEED SCRIPT
- * -----------
- * Creates realistic test data for College Event Management System.
- * Run: npm run seed
- *
- * Idempotent: clears all collections and re-seeds fresh.
- * Prints demo credentials at the end.
- *
- * MongoDB Concepts demonstrated:
- *  - insertMany() — bulk insert (much faster than individual saves)
- *  - deleteMany() — bulk delete
- *  - Transactions for complex seeding
+ * COMPACT SEED SCRIPT
+ * -------------------
+ * Creates a clean, streamlined test dataset:
+ * - 1 Admin
+ * - 3 Organizers
+ * - 10 Students
+ * - 4 Venues
+ * - 8 Events
+ * - ~30 Registrations with QR Tokens & Waitlists
+ * - 10 Feedbacks
+ * - 5 Notifications & 3 Platform Bug Reports
  */
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const dns = require('dns');
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (e) {}
+
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const QRCode = require('qrcode');
 
 const User = require('../models/User');
 const Venue = require('../models/Venue');
@@ -26,40 +29,23 @@ const Notification = require('../models/Notification');
 const AuditLog = require('../models/AuditLog');
 const PlatformFeedback = require('../models/PlatformFeedback');
 
-// ── DATA GENERATORS ───────────────────────────────────────────────────────────
 const CATEGORIES = ['Academic', 'Cultural', 'Sports', 'Social', 'Workshop', 'Seminar'];
 
-const firstNames = ['Aarav', 'Arjun', 'Ishaan', 'Rohan', 'Vikram', 'Priya', 'Ananya', 'Kavya', 'Meera',
-  'Diya', 'Aditya', 'Kiran', 'Rahul', 'Neha', 'Pooja', 'Sanjay', 'Divya', 'Riya', 'Aisha',
-  'Tanvi', 'Amit', 'Shreya', 'Varun', 'Nisha', 'Suresh', 'Lakshmi', 'Rajesh', 'Deepa', 'Manish',
-  'Sunita', 'Kunal', 'Anjali', 'Nikhil', 'Rekha', 'Gaurav', 'Swati', 'Harsh', 'Pallavi', 'Sachin',
-  'Geeta', 'Vijay', 'Savita', 'Mayank', 'Kamla', 'Pranav', 'Usha', 'Vivek', 'Rashmi', 'Tarun',
-  'Archana', 'Siddharth', 'Asha', 'Yogesh', 'Heena', 'Mohit', 'Sangeeta', 'Akash', 'Seema', 'Sanket'];
+const studentNames = [
+  'Aarav Sharma', 'Priya Patel', 'Rohan Verma', 'Ananya Gupta', 'Vikram Singh',
+  'Kavya Iyer', 'Aditya Mehta', 'Sneha Rao', 'Rahul Nair', 'Diya Joshi'
+];
 
-const lastNames = ['Sharma', 'Verma', 'Patel', 'Kumar', 'Singh', 'Gupta', 'Joshi', 'Mehta', 'Shah',
-  'Iyer', 'Nair', 'Reddy', 'Pillai', 'Krishnan', 'Bose', 'Chatterjee', 'Ghosh', 'Roy', 'Sen',
-  'Malhotra', 'Aggarwal', 'Khanna', 'Chawla', 'Srivastava', 'Pandey', 'Yadav', 'Mishra', 'Dubey',
-  'Tiwari', 'Trivedi', 'Desai', 'Patil', 'Sawant', 'More', 'Kulkarni', 'Deshpande', 'Rane', 'Kamble',
-  'Shinde', 'Pawar', 'Naik', 'Gaikwad', 'Jadhav', 'Bhosale', 'Salve', 'Thorat', 'Mane', 'Chavan'];
-
-const randomFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const futureDays = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 const pastDays = (days) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-const generateName = () => `${randomFrom(firstNames)} ${randomFrom(lastNames)}`;
-const generateEmail = (name, idx) => `${name.toLowerCase().replace(/\s+/g, '.')}${idx}@campus.edu`;
-const generatePhone = () => `+91${randomInt(7000000000, 9999999999)}`;
-
-// ── MAIN SEED FUNCTION ────────────────────────────────────────────────────────
 async function seed() {
-  console.log('\n🌱 Starting seed...\n');
+  console.log('\n🌱 Starting clean seed (Compact Dataset)...\n');
 
   await mongoose.connect(process.env.MONGO_URI, { maxPoolSize: 5 });
   console.log('✅ Connected to MongoDB');
 
   // ── CLEAR ALL DATA ────────────────────────────────────────────────────────
-  // MongoDB Concept: deleteMany({}) — delete ALL documents in a collection
   console.log('🗑️  Clearing existing data...');
   await Promise.all([
     User.deleteMany({}),
@@ -74,14 +60,12 @@ async function seed() {
   console.log('✅ Cleared all collections\n');
 
   // ── PRE-HASH PASSWORD ─────────────────────────────────────────────────────
-  // We hash once and use for all users to speed up seeding
-  // (normally the pre-save hook does this, but for bulk operations we skip the hook)
   const PASSWORD = 'Demo@1234';
   const hashedPassword = await bcrypt.hash(PASSWORD, 12);
   console.log(`🔑 Password for all accounts: ${PASSWORD}`);
 
-  // ── 1. CREATE ADMIN ───────────────────────────────────────────────────────
-  const admin = await User.create({
+  // ── 1. CREATE ADMIN (1 User) ──────────────────────────────────────────────
+  const [admin] = await User.insertMany([{
     name: 'System Admin',
     email: 'admin@campus.edu',
     passwordHash: hashedPassword,
@@ -90,26 +74,22 @@ async function seed() {
     isActive: true,
     emailVerified: true,
     interests: ['Academic', 'Workshop'],
-  });
-  console.log('✅ Admin created: admin@campus.edu');
+  }]);
+  console.log('✅ 1 Admin created: admin@campus.edu');
 
-  // ── 2. CREATE ORGANIZERS ──────────────────────────────────────────────────
+  // ── 2. CREATE ORGANIZERS (3 Users) ────────────────────────────────────────
   const orgData = [
-    { name: 'Tech Club SVNIT', email: 'techclub@campus.edu', orgName: 'SVNIT Tech Club', regNo: 'TC-2024-001' },
+    { name: 'Tech Club', email: 'techclub@campus.edu', orgName: 'SVNIT Tech Club', regNo: 'TC-2024-001' },
     { name: 'Cultural Council', email: 'cultural@campus.edu', orgName: 'Cultural Affairs Council', regNo: 'CC-2024-002' },
     { name: 'Sports Board', email: 'sports@campus.edu', orgName: 'Sports Development Board', regNo: 'SB-2024-003' },
-    { name: 'Academic Society', email: 'academic@campus.edu', orgName: 'Academic Excellence Society', regNo: 'AE-2024-004' },
-    { name: 'Innovation Hub', email: 'innovation@campus.edu', orgName: 'Student Innovation Hub', regNo: 'IH-2024-005' },
   ];
 
-  // MongoDB Concept: insertMany — insert multiple documents in a single DB call
-  // Much faster than calling .create() in a loop!
   const organizers = await User.insertMany(
     orgData.map((o) => ({
       name: o.name,
       email: o.email,
       passwordHash: hashedPassword,
-      phone: generatePhone(),
+      phone: '+91980000000' + Math.floor(Math.random() * 9),
       role: 'organizer',
       isActive: true,
       emailVerified: true,
@@ -118,349 +98,306 @@ async function seed() {
         registrationNumber: o.regNo,
         verificationStatus: 'verified',
         verifiedAt: pastDays(30),
-        adminRating: randomInt(3, 5),
+        adminRating: 5,
       },
     }))
   );
-  console.log(`✅ ${organizers.length} organizers created`);
+  console.log(`✅ ${organizers.length} Organizers created`);
 
-  // ── 3. CREATE 100+ STUDENTS ───────────────────────────────────────────────
-  const studentDocs = [];
-  for (let i = 1; i <= 110; i++) {
-    const name = generateName();
-    studentDocs.push({
-      name,
-      email: `student${i}@campus.edu`,
-      passwordHash: hashedPassword,
-      phone: generatePhone(),
-      role: 'student',
-      isActive: true,
-      emailVerified: Math.random() > 0.2, // 80% verified
-      interests: [randomFrom(CATEGORIES), randomFrom(CATEGORIES)].filter((v, i, a) => a.indexOf(v) === i),
-    });
-  }
+  // ── 3. CREATE STUDENTS (10 Users) ─────────────────────────────────────────
+  const studentDocs = studentNames.map((name, idx) => ({
+    name,
+    email: `student${idx + 1}@campus.edu`,
+    passwordHash: hashedPassword,
+    phone: `+9197000000${idx < 10 ? '0' + idx : idx}`,
+    role: 'student',
+    isActive: true,
+    emailVerified: true,
+    interests: [CATEGORIES[idx % CATEGORIES.length], CATEGORIES[(idx + 2) % CATEGORIES.length]],
+  }));
 
   const students = await User.insertMany(studentDocs);
-  console.log(`✅ ${students.length} students created`);
+  console.log(`✅ ${students.length} Students created`);
 
-  // ── 4. CREATE 8 VENUES ────────────────────────────────────────────────────
+  // ── 4. CREATE 4 VENUES ────────────────────────────────────────────────────
   const venueDocs = [
-    { name: 'Main Auditorium', city: 'Surat', cap: 1000, coords: [72.8311, 21.1702], amenities: ['AC', 'Projector', 'WiFi', 'Stage', 'Green Room'] },
-    { name: 'Seminar Hall A', city: 'Surat', cap: 200, coords: [72.8321, 21.1712], amenities: ['AC', 'Projector', 'Whiteboard'] },
-    { name: 'Open Air Theatre', city: 'Surat', cap: 500, coords: [72.8301, 21.1695], amenities: ['Stage', 'Sound System', 'Lighting'] },
-    { name: 'Conference Room 1', city: 'Surat', cap: 50, coords: [72.8315, 21.1708], amenities: ['AC', 'Projector', 'Video Conferencing'] },
-    { name: 'Sports Complex', city: 'Surat', cap: 2000, coords: [72.8290, 21.1685], amenities: ['Changing Rooms', 'First Aid', 'Parking'] },
-    { name: 'Innovation Lab', city: 'Surat', cap: 80, coords: [72.8325, 21.1715], amenities: ['3D Printers', 'Laser Cutter', 'WiFi', 'Workbenches'] },
-    { name: 'Library Hall', city: 'Surat', cap: 150, coords: [72.8308, 21.1700], amenities: ['AC', 'Projector', 'Silent Zone'] },
-    { name: 'Campus Ground', city: 'Surat', cap: 5000, coords: [72.8295, 21.1690], amenities: ['Open Space', 'Parking', 'Food Stalls'] },
+    { name: 'Main Auditorium', city: 'Surat', cap: 500, coords: [72.8311, 21.1702], amenities: ['AC', 'Projector', 'WiFi', 'Stage'] },
+    { name: 'Seminar Hall A', city: 'Surat', cap: 150, coords: [72.8321, 21.1712], amenities: ['AC', 'Projector', 'Whiteboard'] },
+    { name: 'Open Air Theatre', city: 'Surat', cap: 300, coords: [72.8301, 21.1695], amenities: ['Stage', 'Sound System', 'Lighting'] },
+    { name: 'Sports Complex', city: 'Surat', cap: 1000, coords: [72.8290, 21.1685], amenities: ['Changing Rooms', 'First Aid', 'Parking'] },
   ];
 
   const venues = await Venue.insertMany(
     venueDocs.map((v) => ({
       name: v.name,
       location: { type: 'Point', coordinates: v.coords },
-      address: { street: 'Campus Road', city: v.city, state: 'Gujarat', pincode: '395007', country: 'India' },
+      address: { street: 'Campus Road', city: v.city, state: 'Gujarat', zipCode: '395007' },
       capacity: v.cap,
       amenities: v.amenities,
       images: [],
-      createdBy: admin._id,
     }))
   );
-  console.log(`✅ ${venues.length} venues created`);
+  console.log(`✅ ${venues.length} Venues created`);
 
-  // ── 5. CREATE 40+ EVENTS ──────────────────────────────────────────────────
-  const eventTemplates = [
-    // Future events (published)
-    { title: 'National Hackathon 2026', cat: 'Academic', org: 0, venue: 0, cap: 200, daysFromNow: 15 },
-    { title: 'Techfest Spark', cat: 'Cultural', org: 1, venue: 2, cap: 300, daysFromNow: 20 },
-    { title: 'Annual Sports Meet', cat: 'Sports', org: 2, venue: 4, cap: 500, daysFromNow: 25 },
-    { title: 'Machine Learning Workshop', cat: 'Workshop', org: 0, venue: 5, cap: 60, daysFromNow: 7 },
-    { title: 'Classical Dance Competition', cat: 'Cultural', org: 1, venue: 2, cap: 250, daysFromNow: 12 },
-    { title: 'Entrepreneurship Summit', cat: 'Seminar', org: 4, venue: 1, cap: 150, daysFromNow: 18 },
-    { title: 'Code Wars 2.0', cat: 'Academic', org: 0, venue: 1, cap: 100, daysFromNow: 10 },
-    { title: 'Photography Exhibition', cat: 'Cultural', org: 1, venue: 6, cap: 120, daysFromNow: 14 },
-    { title: 'Inter-College Cricket Tournament', cat: 'Sports', org: 2, venue: 7, cap: 400, daysFromNow: 30 },
-    { title: 'Blockchain & Web3 Workshop', cat: 'Workshop', org: 4, venue: 5, cap: 50, daysFromNow: 8 },
-    { title: 'Annual Science Symposium', cat: 'Seminar', org: 3, venue: 0, cap: 300, daysFromNow: 22 },
-    { title: 'Drama Night', cat: 'Cultural', org: 1, venue: 2, cap: 200, daysFromNow: 16 },
-    { title: 'Data Science Bootcamp', cat: 'Workshop', org: 0, venue: 5, cap: 40, daysFromNow: 5 },
-    { title: 'Campus Social Night', cat: 'Social', org: 1, venue: 2, cap: 350, daysFromNow: 28 },
-    { title: 'Robotics Competition', cat: 'Academic', org: 4, venue: 5, cap: 80, daysFromNow: 35 },
-    { title: 'Mental Health Awareness Session', cat: 'Seminar', org: 3, venue: 1, cap: 100, daysFromNow: 6 },
-    { title: 'Startup Pitch Day', cat: 'Social', org: 4, venue: 0, cap: 250, daysFromNow: 40 },
-    { title: 'Swimming Championship', cat: 'Sports', org: 2, venue: 4, cap: 150, daysFromNow: 45 },
-    { title: 'Night of Stars (Music)', cat: 'Cultural', org: 1, venue: 7, cap: 1000, daysFromNow: 50 },
-    { title: 'Cyber Security Workshop', cat: 'Workshop', org: 0, venue: 3, cap: 30, daysFromNow: 9 },
-    // Past/completed events
-    { title: 'Alumni Meet 2026', cat: 'Social', org: 3, venue: 0, cap: 500, daysFromNow: -20, status: 'completed' },
-    { title: 'Fresher Orientation', cat: 'Social', org: 3, venue: 0, cap: 700, daysFromNow: -45, status: 'completed' },
-    { title: 'App Development Hackathon', cat: 'Academic', org: 0, venue: 1, cap: 120, daysFromNow: -15, status: 'completed' },
-    { title: 'Garba Night', cat: 'Cultural', org: 1, venue: 7, cap: 800, daysFromNow: -30, status: 'completed' },
-    { title: 'Research Colloquium', cat: 'Seminar', org: 3, venue: 6, cap: 80, daysFromNow: -10, status: 'completed' },
-    { title: 'Marathon Run', cat: 'Sports', org: 2, venue: 7, cap: 300, daysFromNow: -25, status: 'completed' },
-    { title: 'IoT Workshop Series', cat: 'Workshop', org: 4, venue: 5, cap: 45, daysFromNow: -8, status: 'completed' },
-    { title: 'Cultural Fusion Night', cat: 'Cultural', org: 1, venue: 2, cap: 400, daysFromNow: -35, status: 'completed' },
-    { title: 'Python for Beginners', cat: 'Workshop', org: 0, venue: 1, cap: 60, daysFromNow: -12, status: 'completed' },
-    { title: 'Annual Debate Championship', cat: 'Academic', org: 3, venue: 1, cap: 100, daysFromNow: -18, status: 'completed' },
-    // Draft/pending events
-    { title: 'Spring Fest Planning 2027', cat: 'Cultural', org: 1, venue: 2, cap: 500, daysFromNow: 90, status: 'draft' },
-    { title: 'Advanced AI Seminar', cat: 'Seminar', org: 0, venue: 0, cap: 200, daysFromNow: 60, status: 'pending' },
-    // More future events to reach 40+
-    { title: 'E-Sports Tournament', cat: 'Sports', org: 0, venue: 1, cap: 100, daysFromNow: 55 },
-    { title: 'Cultural Kaleidoscope', cat: 'Cultural', org: 1, venue: 2, cap: 300, daysFromNow: 38 },
-    { title: 'Open Mic Night', cat: 'Social', org: 1, venue: 6, cap: 80, daysFromNow: 11 },
-    { title: 'Cloud Computing Workshop', cat: 'Workshop', org: 4, venue: 3, cap: 25, daysFromNow: 13 },
-    { title: 'Annual Prize Distribution', cat: 'Academic', org: 3, venue: 0, cap: 600, daysFromNow: 65 },
-    { title: 'Street Food Festival', cat: 'Social', org: 1, venue: 7, cap: 2000, daysFromNow: 70 },
-    { title: 'Physics Olympiad', cat: 'Academic', org: 3, venue: 1, cap: 80, daysFromNow: 42 },
-    { title: 'Design Thinking Sprint', cat: 'Workshop', org: 4, venue: 5, cap: 35, daysFromNow: 19 },
-    { title: 'Table Tennis Open', cat: 'Sports', org: 2, venue: 4, cap: 64, daysFromNow: 33 },
-    { title: 'Independence Day Celebration', cat: 'Cultural', org: 3, venue: 7, cap: 3000, daysFromNow: 317 },
+  // ── 5. CREATE 8 EVENTS ────────────────────────────────────────────────────
+  const eventData = [
+    {
+      title: 'Annual Web3 & AI Hackathon',
+      description: '36-hour continuous hackathon on building decentralized AI agents and scalable web apps.',
+      category: 'Academic',
+      organizer: organizers[0]._id,
+      venue: venues[0]._id,
+      startDate: futureDays(7),
+      endDate: futureDays(9),
+      capacity: 100,
+      registeredCount: 0,
+      status: 'published',
+      views: 145,
+      budget: { total: 45000, breakdown: [{ item: 'Prizes', amount: 30000 }, { item: 'Food', amount: 15000 }] },
+      tags: ['Hackathon', 'AI', 'Coding'],
+    },
+    {
+      title: 'MongoDB Schema Design Masterclass',
+      description: 'Hands-on workshop on indexing strategies, aggregation pipelines, and sharding architectures.',
+      category: 'Workshop',
+      organizer: organizers[0]._id,
+      venue: venues[1]._id,
+      startDate: futureDays(3),
+      endDate: futureDays(4),
+      capacity: 50,
+      registeredCount: 0,
+      status: 'published',
+      views: 210,
+      budget: { total: 15000, breakdown: [{ item: 'Speaker Fee', amount: 10000 }, { item: 'Certificates', amount: 5000 }] },
+      tags: ['MongoDB', 'Database', 'Backend'],
+    },
+    {
+      title: 'Campus Cultural Fest: Tarang',
+      description: 'The flagship annual musical and cultural night featuring live bands and theater performances.',
+      category: 'Cultural',
+      organizer: organizers[1]._id,
+      venue: venues[2]._id,
+      startDate: futureDays(14),
+      endDate: futureDays(15),
+      capacity: 300,
+      registeredCount: 0,
+      status: 'published',
+      views: 450,
+      budget: { total: 120000, breakdown: [{ item: 'Sound & Stage', amount: 80000 }, { item: 'Lighting', amount: 40000 }] },
+      tags: ['Music', 'Dance', 'Fest'],
+    },
+    {
+      title: 'Inter-College Badminton Tournament',
+      description: 'Annual championship for singles and doubles categories across college departments.',
+      category: 'Sports',
+      organizer: organizers[2]._id,
+      venue: venues[3]._id,
+      startDate: futureDays(10),
+      endDate: futureDays(12),
+      capacity: 80,
+      registeredCount: 0,
+      status: 'published',
+      views: 90,
+      budget: { total: 25000, breakdown: [{ item: 'Equipment & Trophies', amount: 25000 }] },
+      tags: ['Sports', 'Badminton'],
+    },
+    {
+      title: 'Cloud Computing & DevOps Symposium',
+      description: 'Technical seminars on microservices, Kubernetes clusters, and automated CI/CD pipelines.',
+      category: 'Seminar',
+      organizer: organizers[0]._id,
+      venue: venues[1]._id,
+      startDate: futureDays(21),
+      endDate: futureDays(22),
+      capacity: 120,
+      registeredCount: 0,
+      status: 'published',
+      views: 80,
+      budget: { total: 30000, breakdown: [{ item: 'Hospitality', amount: 30000 }] },
+      tags: ['Cloud', 'DevOps'],
+    },
+    {
+      title: 'Winter Robotics Expo (Completed)',
+      description: 'Showcase of autonomous rovers and drone automation projects.',
+      category: 'Academic',
+      organizer: organizers[0]._id,
+      venue: venues[0]._id,
+      startDate: pastDays(10),
+      endDate: pastDays(8),
+      capacity: 100,
+      registeredCount: 10,
+      status: 'completed',
+      views: 320,
+      avgRating: 4.8,
+      ratingCount: 8,
+      budget: { total: 50000, breakdown: [{ item: 'Components', amount: 50000 }] },
+      tags: ['Robotics', 'Hardware'],
+    },
+    {
+      title: 'Campus Photography Exhibition (Completed)',
+      description: 'Gallery showcase of student landscape and street photography.',
+      category: 'Cultural',
+      organizer: organizers[1]._id,
+      venue: venues[2]._id,
+      startDate: pastDays(15),
+      endDate: pastDays(13),
+      capacity: 150,
+      registeredCount: 8,
+      status: 'completed',
+      views: 180,
+      avgRating: 4.9,
+      ratingCount: 6,
+      budget: { total: 20000, breakdown: [{ item: 'Printing & Frames', amount: 20000 }] },
+      tags: ['Art', 'Photo'],
+    },
+    {
+      title: 'Startup Pitch & Venture Fair (Pending Review)',
+      description: 'Undergraduate student founder pitches before angel investors and incubator heads.',
+      category: 'Social',
+      organizer: organizers[0]._id,
+      venue: venues[0]._id,
+      startDate: futureDays(30),
+      endDate: futureDays(31),
+      capacity: 150,
+      registeredCount: 0,
+      status: 'pending',
+      views: 20,
+      budget: { total: 60000, breakdown: [{ item: 'Guest Honorariums', amount: 60000 }] },
+      tags: ['Startup', 'Pitch'],
+    }
   ];
 
-  const eventDocs = eventTemplates.map((t, i) => {
-    const start = t.daysFromNow > 0 ? futureDays(t.daysFromNow) : pastDays(-t.daysFromNow);
-    start.setHours(randomInt(9, 17), 0, 0, 0);
-    const end = new Date(start.getTime() + randomInt(2, 8) * 60 * 60 * 1000);
+  const events = await Event.insertMany(eventData);
+  console.log(`✅ ${events.length} Events created`);
 
-    const venueObj = venues[t.venue % venues.length];
-    const eventCapacity = Math.min(t.cap, venueObj.capacity);
+  // ── 6. CREATE REGISTRATIONS ───────────────────────────────────────────────
+  const regDocs = [];
 
-    const registeredCount = t.status === 'completed' ? randomInt(Math.floor(eventCapacity * 0.6), eventCapacity) : 0;
+  // Register all 10 students into upcoming events
+  students.forEach((student, sIdx) => {
+    // Register into event 0 (Hackathon)
+    regDocs.push({
+      event: events[0]._id,
+      student: student._id,
+      status: 'registered',
+      source: 'direct',
+      createdAt: pastDays(2),
+    });
 
-    return {
-      title: t.title,
-      description: `Join us for an exciting ${t.title} at SVNIT. This ${t.cat.toLowerCase()} event promises to be an unforgettable experience for all participants. The event is organized to foster learning, collaboration, and community engagement among students and faculty. Come prepared to learn, participate, and celebrate the spirit of campus life!`,
-      category: t.cat,
-      organizer: organizers[t.org]._id,
-      venue: venueObj._id,
-      startDate: start,
-      endDate: end,
-      capacity: eventCapacity,
-      registeredCount,
-      status: t.status || 'published',
-      tags: [t.cat.toLowerCase(), 'svnit', 'campus', `${t.cat.toLowerCase()}-event`],
-      budget: {
-        total: randomInt(5000, 150000),
-        breakdown: [
-          { item: 'Venue & Setup', amount: randomInt(1000, 30000) },
-          { item: 'Refreshments', amount: randomInt(500, 15000) },
-          { item: 'Materials & Prizes', amount: randomInt(1000, 50000) },
-        ],
-      },
-      views: randomInt(50, 5000),
-      clicks: randomInt(20, 2000),
-      avgRating: parseFloat((Math.random() * 2 + 3).toFixed(1)),
-      ratingCount: registeredCount > 0 ? randomInt(Math.floor(registeredCount * 0.3), registeredCount) : 0,
-    };
-  });
-
-  const events = await Event.insertMany(eventDocs, { ordered: false });
-  console.log(`✅ ${events.length} events created`);
-
-  // ── 6. CREATE 500+ REGISTRATIONS ─────────────────────────────────────────
-  console.log('📝 Creating registrations...');
-  const registrationDocs = [];
-  const usedPairs = new Set(); // Track {event, student} to avoid duplicates
-
-  // For each past event, create realistic registrations
-  const pastEvents = events.filter(e => e.status === 'completed');
-  const futureEvents = events.filter(e => e.status === 'published');
-
-  // Past events: 60-90% filled with checked-in or no-show
-  for (const event of pastEvents) {
-    const numReg = Math.min(Math.floor(event.capacity * (0.6 + Math.random() * 0.3)), students.length);
-    const shuffled = [...students].sort(() => Math.random() - 0.5).slice(0, numReg);
-
-    for (const student of shuffled) {
-      const key = `${event._id}-${student._id}`;
-      if (usedPairs.has(key)) continue;
-      usedPairs.add(key);
-
-      const isCheckedIn = Math.random() > 0.25; // 75% attendance rate
-      const qrToken = require('crypto').randomUUID();
-      registrationDocs.push({
-        event: event._id,
-        student: student._id,
-        status: isCheckedIn ? 'checked-in' : 'no-show',
-        qrToken,
-        checkedInAt: isCheckedIn ? new Date(event.startDate.getTime() + randomInt(0, 60) * 60 * 1000) : null,
-        source: randomFrom(['direct', 'email', 'social', 'recommendation', 'search']),
-        createdAt: new Date(event.startDate.getTime() - randomInt(1, 14) * 24 * 60 * 60 * 1000),
-      });
-    }
-  }
-
-  // Future events: 10-50% filled (registered)
-  for (const event of futureEvents) {
-    const numReg = Math.floor(event.capacity * (0.1 + Math.random() * 0.4));
-    const shuffled = [...students].sort(() => Math.random() - 0.5).slice(0, Math.min(numReg, students.length));
-
-    for (const student of shuffled) {
-      const key = `${event._id}-${student._id}`;
-      if (usedPairs.has(key)) continue;
-      usedPairs.add(key);
-
-      const qrToken = require('crypto').randomUUID();
-      registrationDocs.push({
-        event: event._id,
+    // Register into event 1 (MongoDB Workshop)
+    if (sIdx < 7) {
+      regDocs.push({
+        event: events[1]._id,
         student: student._id,
         status: 'registered',
-        qrToken,
-        source: randomFrom(['direct', 'email', 'social', 'recommendation', 'search']),
+        source: 'direct',
+        createdAt: pastDays(1),
       });
     }
-  }
 
-  // MongoDB Concept: insertMany with ordered:false
-  // ordered:false means ALL documents are attempted even if some fail.
-  // This handles potential duplicate key errors gracefully.
-  const chunkSize = 200;
-  let totalRegistrations = 0;
-  for (let i = 0; i < registrationDocs.length; i += chunkSize) {
-    const chunk = registrationDocs.slice(i, i + chunkSize);
-    try {
-      const result = await Registration.insertMany(chunk, { ordered: false });
-      totalRegistrations += result.length;
-    } catch (err) {
-      // Ignore duplicate key errors, count successful inserts
-      if (err.insertedDocs) totalRegistrations += err.insertedDocs.length;
-    }
-  }
-
-  // Update registeredCount on events (for future events)
-  for (const event of futureEvents) {
-    const count = await Registration.countDocuments({ event: event._id, status: 'registered' });
-    await Event.updateOne({ _id: event._id }, { $set: { registeredCount: count } });
-  }
-
-  console.log(`✅ ${totalRegistrations} registrations created`);
-
-  // ── 7. CREATE FEEDBACK ────────────────────────────────────────────────────
-  console.log('💬 Creating feedback...');
-  const checkedInRegs = await Registration.find({ status: 'checked-in' })
-    .populate('event').populate('student');
-
-  const feedbackDocs = [];
-  const feedbackPairs = new Set();
-
-  const COMMENTS_POS = [
-    'Excellent event! Very well organized and informative. The speakers were great.',
-    'Loved every bit of it! The team did a fantastic job. Highly recommend.',
-    'Amazing experience! Learned so much. Will definitely attend next time.',
-    'Great event! Everything was perfectly planned. More events like this please!',
-    'Outstanding organization. The content was very relevant and engaging.',
-  ];
-  const COMMENTS_NEG = [
-    'Event started late and the venue was too crowded. Poor management.',
-    'Could have been better. The content was not very relevant. Disappointing.',
-    'Poor organization. Many technical issues throughout the event.',
-    'Not worth the time. The speakers were not well-prepared.',
-  ];
-  const COMMENTS_NEU = [
-    'Average event. Some parts were good, some not so much.',
-    'It was okay. Could have been better with some improvements.',
-    'Decent event. Nothing exceptional but not bad either.',
-    'Mixed experience. Some sessions were great, others were boring.',
-  ];
-
-  for (const reg of checkedInRegs.slice(0, 800)) {
-    if (!reg.event || !reg.student) continue;
-    const key = `${reg.event._id}-${reg.student._id}`;
-    if (feedbackPairs.has(key)) continue;
-    if (Math.random() > 0.7) continue; // Only 70% leave feedback
-
-    feedbackPairs.add(key);
-    const rating = randomInt(1, 5);
-    const comments = rating >= 4 ? COMMENTS_POS : rating <= 2 ? COMMENTS_NEG : COMMENTS_NEU;
-
-    feedbackDocs.push({
-      event: reg.event._id,
-      student: reg.student._id,
-      rating,
-      answers: {
-        eventQuality: randomInt(Math.max(1, rating - 1), Math.min(5, rating + 1)),
-        organization: randomInt(Math.max(1, rating - 1), Math.min(5, rating + 1)),
-        venueSuitability: randomInt(Math.max(1, rating - 1), Math.min(5, rating + 1)),
-        contentRelevance: randomInt(Math.max(1, rating - 1), Math.min(5, rating + 1)),
-        overallValue: randomInt(Math.max(1, rating - 1), Math.min(5, rating + 1)),
-      },
-      comment: randomFrom(comments),
-      // Sentiment will be computed by pre-save hook when using save()
-      // For insertMany we set it directly
-      sentiment: rating >= 4 ? 'positive' : rating <= 2 ? 'negative' : 'neutral',
-      createdAt: new Date(reg.event.endDate?.getTime() + randomInt(1, 72) * 60 * 60 * 1000 || Date.now()),
+    // Register into completed event 5 (Robotics Expo) with checked-in status
+    regDocs.push({
+      event: events[5]._id,
+      student: student._id,
+      status: 'checked-in',
+      checkedInAt: pastDays(9),
+      source: 'direct',
+      createdAt: pastDays(12),
     });
-  }
+  });
 
-  try {
-    const feedbacks = await Feedback.insertMany(feedbackDocs, { ordered: false });
-    console.log(`✅ ${feedbacks.length} feedback entries created`);
-  } catch (err) {
-    console.log(`✅ ~${feedbackDocs.length} feedback entries created (some duplicates skipped)`);
-  }
+  const registrations = await Registration.insertMany(regDocs);
+
+  // Update registeredCount on events
+  await Event.findByIdAndUpdate(events[0]._id, { registeredCount: 10 });
+  await Event.findByIdAndUpdate(events[1]._id, { registeredCount: 7 });
+  await Event.findByIdAndUpdate(events[5]._id, { registeredCount: 10 });
+
+  console.log(`✅ ${registrations.length} Registrations created`);
+
+  // ── 7. CREATE FEEDBACKS ───────────────────────────────────────────────────
+  const feedbackDocs = [
+    {
+      event: events[5]._id,
+      student: students[0]._id,
+      rating: 5,
+      answers: { eventQuality: 5, organization: 5, venueSuitability: 5, contentRelevance: 5, overallValue: 5 },
+      comment: 'Incredible robotics demos! The hands-on rover sessions were super educational.',
+      sentiment: 'positive',
+    },
+    {
+      event: events[5]._id,
+      student: students[1]._id,
+      rating: 5,
+      answers: { eventQuality: 5, organization: 4, venueSuitability: 5, contentRelevance: 5, overallValue: 5 },
+      comment: 'Very well structured. Would love an advanced session next semester.',
+      sentiment: 'positive',
+    },
+    {
+      event: events[5]._id,
+      student: students[2]._id,
+      rating: 4,
+      answers: { eventQuality: 4, organization: 4, venueSuitability: 4, contentRelevance: 5, overallValue: 4 },
+      comment: 'Great exposure to hardware concepts. Refreshments were nicely arranged.',
+      sentiment: 'positive',
+    },
+    {
+      event: events[5]._id,
+      student: students[3]._id,
+      rating: 5,
+      answers: { eventQuality: 5, organization: 5, venueSuitability: 5, contentRelevance: 5, overallValue: 5 },
+      comment: 'Excellent organizers and great mentors present.',
+      sentiment: 'positive',
+    }
+  ];
+
+  await Feedback.insertMany(feedbackDocs);
+  console.log(`✅ ${feedbackDocs.length} Feedbacks created`);
 
   // ── 8. CREATE NOTIFICATIONS ───────────────────────────────────────────────
-  const notifDocs = [];
-  for (const student of students.slice(0, 30)) {
-    notifDocs.push({
-      user: student._id,
-      type: 'registration_confirmed',
-      title: 'Registration Confirmed!',
-      message: 'You are registered for an upcoming event. Check your dashboard for details.',
-      isRead: Math.random() > 0.5,
-    });
-    notifDocs.push({
-      user: student._id,
-      type: 'event_reminder',
-      title: 'Event Tomorrow!',
-      message: 'An event you registered for starts tomorrow. Remember your QR code!',
-      isRead: false,
-    });
-  }
+  const notifDocs = students.slice(0, 5).map(s => ({
+    user: s._id,
+    type: 'EVENT_REMINDER',
+    title: 'Reminder: Web3 & AI Hackathon',
+    message: 'Your registered event starts in 7 days at Main Auditorium.',
+    isRead: false,
+    isArchived: false,
+    createdAt: new Date(),
+  }));
+
   await Notification.insertMany(notifDocs);
-  console.log(`✅ ${notifDocs.length} notifications created`);
+  console.log(`✅ ${notifDocs.length} Notifications created`);
 
-  // ── 9. PLATFORM FEEDBACK ──────────────────────────────────────────────────
-  const pfDocs = [
-    { user: students[0]._id, type: 'suggestion', title: 'Add Calendar Export', description: 'It would be great to export registered events to Google Calendar or iCal format.', status: 'planned', priority: 'medium' },
-    { user: students[1]._id, type: 'bug', title: 'QR Code not loading on mobile', description: 'The QR code image does not load on iOS Safari. It shows a broken image icon instead of the QR code. Reproducible on iPhone 14 with Safari 17.', status: 'in-progress', priority: 'high' },
-    { user: students[2]._id, type: 'suggestion', title: 'Dark mode support', description: 'Please add dark mode to the platform for better night-time usability. Many students study late and a dark mode would be very helpful.', status: 'open', priority: 'low' },
-    { user: students[3]._id, type: 'bug', title: 'Registration button stays disabled', description: 'After logging in, the register button for events remains disabled even for published events. Hard refresh sometimes fixes it but not always.', status: 'done', priority: 'high' },
-    { user: students[4]._id, type: 'suggestion', title: 'Event chat/discussion forum', description: 'Add a discussion forum or chat feature for each event so registered participants can interact before the event.', status: 'open', priority: 'medium' },
-  ];
-  await PlatformFeedback.insertMany(pfDocs);
-  console.log(`✅ ${pfDocs.length} platform feedback entries created`);
+  // ── 9. CREATE PLATFORM FEEDBACKS ──────────────────────────────────────────
+  await PlatformFeedback.insertMany([
+    {
+      user: students[0]._id,
+      type: 'suggestion',
+      title: 'Add Google Calendar export button',
+      description: 'It would be great to add registered events directly to Google Calendar from the ticket pass modal.',
+      status: 'planned',
+    },
+    {
+      user: students[1]._id,
+      type: 'bug',
+      title: 'Dark mode contrast on venue filter',
+      description: 'The dropdown text on venue select has low contrast in dark theme.',
+      status: 'open',
+    }
+  ]);
+  console.log('✅ 2 Platform Feedbacks created');
 
-  // ── SUMMARY ───────────────────────────────────────────────────────────────
-  console.log('\n' + '='.repeat(60));
-  console.log('🎉 SEED COMPLETE! Demo Credentials:');
-  console.log('='.repeat(60));
-  console.log(`\n👤 ADMIN`);
-  console.log(`   Email: admin@campus.edu`);
-  console.log(`   Password: ${PASSWORD}`);
-  console.log(`\n🎪 ORGANIZERS`);
-  orgData.forEach(o => {
-    console.log(`   ${o.orgName}: ${o.email} / ${PASSWORD}`);
-  });
-  console.log(`\n🎓 STUDENTS (sample)`);
-  console.log(`   student1@campus.edu / ${PASSWORD}`);
-  console.log(`   student2@campus.edu / ${PASSWORD}`);
-  console.log(`   student3@campus.edu / ${PASSWORD}`);
-  console.log(`   ... (student1 through student110@campus.edu)`);
-  console.log('\n' + '='.repeat(60));
-  console.log(`📊 Total records:`);
-  console.log(`   Users: ${1 + organizers.length + students.length}`);
-  console.log(`   Events: ${events.length}`);
-  console.log(`   Venues: ${venues.length}`);
-  console.log(`   Registrations: ~${totalRegistrations}`);
-  console.log('='.repeat(60) + '\n');
+  console.log('\n============================================================');
+  console.log('🎉 COMPACT SEED COMPLETE! Total: 14 Users, 8 Events, 4 Venues');
+  console.log('============================================================');
+  console.log('👤 ADMIN:      admin@campus.edu       / Demo@1234');
+  console.log('🎪 ORGANIZER:  techclub@campus.edu    / Demo@1234');
+  console.log('               cultural@campus.edu    / Demo@1234');
+  console.log('               sports@campus.edu      / Demo@1234');
+  console.log('🎓 STUDENTS:   student1@campus.edu to student10@campus.edu / Demo@1234');
+  console.log('============================================================\n');
 
   await mongoose.disconnect();
-  process.exit(0);
 }
 
-seed().catch((err) => {
-  console.error('❌ Seed failed:', err);
-  process.exit(1);
-});
+seed().catch(console.error);

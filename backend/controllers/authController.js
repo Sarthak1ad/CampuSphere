@@ -45,6 +45,10 @@ const sendTokenResponse = (user, statusCode, res) => {
     success: true,
     token,
     user: userData,
+    data: {
+      token,
+      user: userData,
+    },
   });
 };
 

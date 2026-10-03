@@ -67,20 +67,21 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ── API ROUTES ─────────────────────────────────────────────────────────────────
-const API = '/api/v1';
+const registerRoutes = (prefix) => {
+  app.use(`${prefix}/auth`, authLimiter, require('./routes/auth'));
+  app.use(`${prefix}/events`, require('./routes/events'));
+  app.use(`${prefix}/registrations`, require('./routes/registrations'));
+  app.use(`${prefix}/venues`, require('./routes/venues'));
+  app.use(`${prefix}/feedback`, require('./routes/feedback'));
+  app.use(`${prefix}/notifications`, require('./routes/notifications'));
+  app.use(`${prefix}/analytics`, require('./routes/analytics'));
+  app.use(`${prefix}/users`, require('./routes/users'));
+  app.use(`${prefix}/db-lab`, require('./routes/dbLab'));
+  app.use(`${prefix}/platform-feedback`, require('./routes/platformFeedback'));
+};
 
-app.use(`${API}/auth`, authLimiter, require('./routes/auth'));
-app.use(`${API}/events`, require('./routes/events'));
-app.use(`${API}/registrations`, require('./routes/registrations'));
-app.use(`${API}/venues`, require('./routes/venues'));
-app.use(`${API}/feedback`, require('./routes/feedback'));
-app.use(`${API}/notifications`, require('./routes/notifications'));
-app.use(`${API}/analytics`, require('./routes/analytics'));
-app.use(`${API}/users`, require('./routes/users'));
-app.use(`${API}/db-lab`, require('./routes/dbLab'));
-
-// Platform feedback (student submits)
-app.use(`${API}/platform-feedback`, require('./routes/platformFeedback'));
+registerRoutes('/api');
+registerRoutes('/api/v1');
 
 // Health check
 app.get('/api/health', (req, res) => {

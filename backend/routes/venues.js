@@ -28,5 +28,6 @@ router.put('/:id', protect, authorize('admin'),
   ctrl.updateVenue
 );
 router.patch('/:id/archive', protect, authorize('admin'), ctrl.archiveVenue);
+router.delete('/:id', protect, authorize('admin'), ctrl.deleteVenue);
 
 module.exports = router;

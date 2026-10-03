@@ -10,6 +10,12 @@
  *  - Queue operations until connected
  *  - Share the single connection across all models
  */
+const dns = require('dns');
+// Set public DNS servers to resolve MongoDB Atlas SRV records reliably on Windows
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (e) {}
+
 const mongoose = require('mongoose');
 
 const connectDB = async () => {

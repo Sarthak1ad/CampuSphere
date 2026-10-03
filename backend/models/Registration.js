@@ -44,7 +44,6 @@ const registrationSchema = new mongoose.Schema({
   // Each registration gets a UUID stored here; we generate the QR image from it
   qrToken: {
     type: String,
-    unique: true,
     default: () => {
       // Generate a cryptographically random UUID
       return require('crypto').randomUUID();

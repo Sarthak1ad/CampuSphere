@@ -129,6 +129,8 @@ userSchema.virtual('fullRole').get(function () {
 userSchema.pre('save', async function (next) {
   // Only hash if the password was actually modified (not on other updates)
   if (!this.isModified('passwordHash')) return next();
+  // If already hashed with bcrypt (e.g. from seed or external source), skip
+  if (this.passwordHash && /^\$2[aby]\$\d{2}\$/.test(this.passwordHash)) return next();
 
   try {
     // bcryptjs: salt rounds = 12 (higher = slower but more secure)

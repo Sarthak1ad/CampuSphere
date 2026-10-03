@@ -266,7 +266,8 @@ export class RegisterComponent {
     this.authService.register(payload).subscribe({
       next: res => {
         this.isLoading = false;
-        this.toastService.success(`Welcome to CampuSphere, ${res.data?.user.name}!`);
+        const user = res.data?.user || res.user;
+        this.toastService.success(`Welcome to CampuSphere, ${user?.name || 'Student'}!`);
         if (this.selectedRole === 'organizer') {
           this.router.navigate(['/organizer/dashboard']);
         } else {
