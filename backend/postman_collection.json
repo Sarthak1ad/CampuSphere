@@ -1,0 +1,294 @@
+{
+  "info": {
+    "_postman_id": "c7a84e20-5678-4321-9876-collegeevents001",
+    "name": "College Event Management System API",
+    "description": "Complete REST API collection for College Event Management System (ADBMS Project)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "organizerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@college.edu\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login (Organizer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"acm@college.edu\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login (Student)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student1@college.edu\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Register (New Student)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Aarav Sharma\",\n  \"email\": \"aarav.test@college.edu\",\n  \"password\": \"Password123!\",\n  \"phone\": \"+919876543210\",\n  \"role\": \"student\",\n  \"interests\": [\"Academic\", \"Workshop\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Events",
+      "item": [
+        {
+          "name": "Get Published Events (List & Search)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/events?page=1&limit=10&category=Academic&sort=-startDate",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "category", "value": "Academic" },
+                { "key": "sort", "value": "-startDate" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Events Nearby (2dsphere Geospatial Query)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/events/nearby?lng=77.2167&lat=28.6448&distance=5000",
+              "host": ["{{baseUrl}}"],
+              "path": ["events", "nearby"],
+              "query": [
+                { "key": "lng", "value": "77.2167" },
+                { "key": "lat", "value": "28.6448" },
+                { "key": "distance", "value": "5000" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Event by ID (Increments views)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/events/EVENT_ID_HERE?source=campus_portal",
+              "host": ["{{baseUrl}}"],
+              "path": ["events", "EVENT_ID_HERE"],
+              "query": [
+                { "key": "source", "value": "campus_portal" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Registrations & Atomic Bookings",
+      "item": [
+        {
+          "name": "RSVP for Event (Atomic Concurrency Control)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/events/EVENT_ID_HERE",
+              "host": ["{{baseUrl}}"],
+              "path": ["registrations", "events", "EVENT_ID_HERE"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Registration (Auto-promotes Waitlisted Student via Transaction)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/registrations/REGISTRATION_ID_HERE",
+              "host": ["{{baseUrl}}"],
+              "path": ["registrations", "REGISTRATION_ID_HERE"]
+            }
+          }
+        },
+        {
+          "name": "Check-in Attendee via QR Token (Organizer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{organizerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qrToken\": \"QR_TOKEN_STRING\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/registrations/events/EVENT_ID_HERE/check-in",
+              "host": ["{{baseUrl}}"],
+              "path": ["registrations", "events", "EVENT_ID_HERE", "check-in"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. DB Lab & Explain Plans (Admin Only)",
+      "item": [
+        {
+          "name": "Get Collections & Index Meta",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/db-lab/collections",
+              "host": ["{{baseUrl}}"],
+              "path": ["db-lab", "collections"]
+            }
+          }
+        },
+        {
+          "name": "Explain Query Benchmark (Indexed vs Unindexed)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/db-lab/explain?collection=events&field=category&value=Academic",
+              "host": ["{{baseUrl}}"],
+              "path": ["db-lab", "explain"],
+              "query": [
+                { "key": "collection", "value": "events" },
+                { "key": "field", "value": "category" },
+                { "key": "value", "value": "Academic" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Run Predefined Aggregation Pipeline",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/db-lab/aggregations/category-distribution",
+              "host": ["{{baseUrl}}"],
+              "path": ["db-lab", "aggregations", "category-distribution"]
+            }
+          }
+        },
+        {
+          "name": "Run Concurrency Simulation (20 simultaneous requests on 5 seats)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/db-lab/concurrency-demo",
+              "host": ["{{baseUrl}}"],
+              "path": ["db-lab", "concurrency-demo"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
