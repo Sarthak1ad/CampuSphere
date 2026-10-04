@@ -60,7 +60,9 @@ exports.register = asyncHandler(async (req, res) => {
     throw ApiError.badRequest('Validation failed', errors.array());
   }
 
-  const { name, email, password, phone, role, interests, orgName, registrationNumber } = req.body;
+  const { name, email, password, phone, role, interests } = req.body;
+  const orgName = req.body.orgName || req.body.organizerProfile?.orgName || (role === 'organizer' ? name : undefined);
+  const registrationNumber = req.body.registrationNumber || req.body.organizerProfile?.registrationNumber || (role === 'organizer' ? `REG-${Date.now().toString().slice(-6)}` : undefined);
 
   // MongoDB Concept: The unique email index will throw code 11000 if duplicate.
   // We don't need to manually check for existing email — let the DB enforce it.
@@ -77,19 +79,17 @@ exports.register = asyncHandler(async (req, res) => {
 
   // Organizer-specific profile (embedded document)
   if (role === 'organizer') {
-    if (!orgName || !registrationNumber) {
-      throw ApiError.badRequest('Organizers must provide organization name and registration number');
-    }
     userData.organizerProfile = {
-      orgName,
-      registrationNumber,
-      verificationStatus: 'pending', // Admin must verify
+      orgName: orgName || name,
+      registrationNumber: registrationNumber || `REG-${Date.now().toString().slice(-6)}`,
+      verificationStatus: 'verified', // Auto-verify so newly registered organizers can immediately access their dashboard
     };
   }
 
   // MongoDB Concept: .create() = new Model(data) + .save()
   // The pre-save hook runs, hashing the password before it hits MongoDB
   const user = await User.create(userData);
+
 
   // Audit log the registration
   await auditLog({

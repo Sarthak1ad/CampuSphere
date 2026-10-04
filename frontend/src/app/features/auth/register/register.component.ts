@@ -12,6 +12,12 @@ import { ToastService } from '../../../core/services/toast.service';
   template: `
     <div class="auth-page">
       <div class="auth-visual">
+        <img src="assets/images/college-building.png" alt="Sanjivani Group of Institutes" class="visual-bg-img" />
+        <div class="visual-overlay"></div>
+        <div class="college-top-label">
+          <i class="fa-solid fa-university"></i>
+          <span>Sanjivani Group of Institutes</span>
+        </div>
         <div class="visual-content">
           <div class="visual-badge">
             <i class="fa-solid fa-user-plus"></i> Join CampuSphere
@@ -145,16 +151,63 @@ import { ToastService } from '../../../core/services/toast.service';
   styles: [`
     .auth-page { display: flex; min-height: 100vh; background: var(--bg-page); }
     .auth-visual {
-      flex: 1.1;
-      background: linear-gradient(145deg, #1A1A1A 0%, #2D1A10 100%);
+      flex: 1;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
       padding: 4rem;
       color: #FFFFFF;
+      position: relative;
+      overflow: hidden;
+      background: #111;
+    }
+    .visual-bg-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+      filter: brightness(0.75) saturate(1.1);
+      transition: transform 8s ease;
+      z-index: 0;
+    }
+    .auth-visual:hover .visual-bg-img {
+      transform: scale(1.05);
+    }
+    .college-top-label {
+      position: absolute;
+      top: 2rem;
+      left: 2.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #ffffff;
+      padding: 0.5rem 1.1rem;
+      border-radius: 50px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      z-index: 3;
+      animation: fadeSlideDown 0.8s ease;
+    }
+    .college-top-label i { color: #FFB38A; }
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .visual-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.15) 100%);
+      z-index: 1;
     }
     @media (max-width: 960px) { .auth-visual { display: none; } }
-    .visual-content { max-width: 580px; }
+    .visual-content { position: relative; z-index: 2; max-width: 580px; }
     .visual-badge {
       display: inline-flex;
       align-items: center;
@@ -168,46 +221,47 @@ import { ToastService } from '../../../core/services/toast.service';
       font-weight: 700;
       margin-bottom: 1.5rem;
     }
-    .visual-title { font-size: 3rem; line-height: 1.1; margin-bottom: 1.25rem; }
-    .visual-subtitle { font-size: 1.1rem; line-height: 1.6; color: #D1D5DB; }
+    .visual-title { font-size: 2.8rem; line-height: 1.15; margin-bottom: 1.25rem; font-weight: 800; }
+    .visual-subtitle { font-size: 1.05rem; line-height: 1.6; color: #D1D5DB; }
     .auth-form-pane {
-      flex: 1;
+      flex: 1.1;
       display: flex;
       flex-direction: column;
       background: #FFFFFF;
-      padding: 2.5rem 3.5rem;
+      padding: 3rem 4.5rem;
       justify-content: space-between;
       overflow-y: auto;
     }
+    @media (max-width: 1100px) { .auth-form-pane { padding: 2.5rem 3rem; } }
     @media (max-width: 600px) { .auth-form-pane { padding: 1.5rem; } }
     .auth-header-bar { display: flex; justify-content: space-between; align-items: center; }
-    .brand-logo-small { font-family: var(--font-heading); font-weight: 800; font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+    .brand-logo-small { font-family: var(--font-heading); font-weight: 800; font-size: 1.35rem; display: flex; align-items: center; gap: 0.6rem; }
     .brand-logo-small i { color: var(--primary); }
-    .auth-form-wrapper { max-width: 440px; width: 100%; margin: auto; padding: 1.5rem 0; }
-    .form-eyebrow { font-size: 0.75rem; font-weight: 800; color: var(--primary); letter-spacing: 0.08em; margin-bottom: 0.4rem; }
-    .form-heading { font-size: 1.85rem; margin-bottom: 1.25rem; }
+    .auth-form-wrapper { max-width: 500px; width: 100%; margin: auto; padding: 2rem 0; }
+    .form-eyebrow { font-size: 0.82rem; font-weight: 800; color: var(--primary); letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+    .form-heading { font-size: 2.3rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 1.25rem; }
     .role-selector {
       display: flex;
       background: #F3F4F6;
-      padding: 0.25rem;
+      padding: 0.35rem;
       border-radius: var(--radius-sm);
       margin-bottom: 1.5rem;
-      gap: 0.25rem;
+      gap: 0.35rem;
     }
     .role-tab {
       flex: 1;
-      padding: 0.6rem;
+      padding: 0.7rem;
       border: none;
       background: transparent;
       border-radius: 6px;
       font-weight: 600;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: var(--text-muted);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.4rem;
+      gap: 0.5rem;
       transition: all 0.2s ease;
     }
     .role-tab.active {
@@ -216,7 +270,41 @@ import { ToastService } from '../../../core/services/toast.service';
       box-shadow: var(--shadow-sm);
       font-weight: 700;
     }
-    .btn-block { width: 100%; margin-top: 1rem; }
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    .form-group .form-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 0.45rem;
+      display: block;
+    }
+    .form-group .form-control {
+      padding: 0.8rem 1.1rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1.5px solid #E5E7EB;
+      transition: all 0.2s ease;
+    }
+    .form-group .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(224, 90, 26, 0.12);
+    }
+    .btn-block {
+      width: 100%;
+      margin-top: 1.25rem;
+      padding: 0.85rem 1.5rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(224, 90, 26, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-block:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(224, 90, 26, 0.38);
+    }
   `]
 })
 export class RegisterComponent {
@@ -244,22 +332,29 @@ export class RegisterComponent {
   }
 
   onSubmit(): void {
-    if (this.registerForm.invalid) return;
+    if (this.registerForm.invalid) {
+      this.registerForm.markAllAsTouched();
+      return;
+    }
 
     this.isLoading = true;
     const val = this.registerForm.value;
     const payload: any = {
-      name: val.name,
-      email: val.email,
-      phone: val.phone,
+      name: val.name.trim(),
+      email: val.email.trim(),
+      phone: val.phone?.trim() || undefined,
       password: val.password,
       role: this.selectedRole
     };
 
     if (this.selectedRole === 'organizer') {
+      const org = val.orgName?.trim() || `${val.name} Club`;
+      const regNo = val.registrationNumber?.trim() || `REG-${Date.now().toString().slice(-6)}`;
+      payload.orgName = org;
+      payload.registrationNumber = regNo;
       payload.organizerProfile = {
-        orgName: val.orgName || val.name,
-        registrationNumber: val.registrationNumber || 'REG-PENDING'
+        orgName: org,
+        registrationNumber: regNo
       };
     }
 
@@ -267,7 +362,7 @@ export class RegisterComponent {
       next: res => {
         this.isLoading = false;
         const user = res.data?.user || res.user;
-        this.toastService.success(`Welcome to CampuSphere, ${user?.name || 'Student'}!`);
+        this.toastService.success(`Welcome to CampuSphere, ${user?.name || 'Organizer'}!`);
         if (this.selectedRole === 'organizer') {
           this.router.navigate(['/organizer/dashboard']);
         } else {
@@ -276,8 +371,10 @@ export class RegisterComponent {
       },
       error: err => {
         this.isLoading = false;
-        this.toastService.error(err.error?.message || 'Registration failed.');
+        const msg = err.error?.message || (err.error?.errors ? err.error.errors[0]?.msg : null) || 'Registration failed. Email may already be registered.';
+        this.toastService.error(msg);
       }
     });
   }
 }
+

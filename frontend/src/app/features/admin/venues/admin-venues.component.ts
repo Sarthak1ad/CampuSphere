@@ -54,17 +54,33 @@ import { Venue } from '../../../core/models';
 
       <!-- Venue Form Modal -->
       <div class="modal-backdrop" *ngIf="showForm" (click)="closeForm()">
-        <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:680px;">
+        <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:620px;">
           <div class="modal-header">
-            <h3>{{ editingVenue ? 'Edit Venue' : 'Add New Venue' }}</h3>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              <i class="fa-solid fa-map-location-dot" style="color:var(--primary); font-size:1.2rem;"></i>
+              <h3 style="margin:0; font-size:1.25rem;">{{ editingVenue ? 'Edit Venue' : 'Add New Venue' }}</h3>
+            </div>
             <button class="btn-close" (click)="closeForm()">&times;</button>
           </div>
           <div class="modal-body">
             <form [formGroup]="venueForm">
-              <div class="form-group">
-                <label class="form-label">Venue Name *</label>
-                <input type="text" class="form-control" formControlName="name" placeholder="e.g. Main Auditorium" />
+              <div class="form-group" style="margin-bottom:1.15rem;">
+                <label class="form-label" style="font-weight:700; color:var(--text-main); font-size:0.95rem;">
+                  Venue Name <span style="color:var(--primary);">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  formControlName="name" 
+                  placeholder="e.g. Main Auditorium / Seminar Hall A" 
+                  style="font-size:1rem; padding:0.75rem 1rem; border:1.5px solid var(--border-light);"
+                  [class.is-invalid]="venueForm.get('name')?.touched && venueForm.get('name')?.invalid"
+                />
+                <div class="form-error" *ngIf="venueForm.get('name')?.touched && venueForm.get('name')?.invalid">
+                  Venue Name is required
+                </div>
               </div>
+
               <div class="two-col">
                 <div class="form-group">
                   <label class="form-label">Building / Hall</label>
@@ -75,39 +91,40 @@ import { Venue } from '../../../core/models';
                   <input type="text" class="form-control" formControlName="roomNumber" placeholder="e.g. Ground Floor" />
                 </div>
               </div>
+
               <div class="two-col">
                 <div class="form-group">
                   <label class="form-label">City *</label>
-                  <input type="text" class="form-control" formControlName="city" placeholder="e.g. New Delhi" />
+                  <input type="text" class="form-control" formControlName="city" placeholder="e.g. Kopargaon" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Capacity *</label>
-                  <input type="number" class="form-control" formControlName="capacity" min="1" />
+                  <label class="form-label">Capacity (Seats) *</label>
+                  <input type="number" class="form-control" formControlName="capacity" min="1" placeholder="100" />
                 </div>
               </div>
 
               <!-- GeoJSON Coordinates -->
               <div class="geo-section">
-                <label class="form-label">
-                  <i class="fa-solid fa-location-dot" style="color:var(--primary);"></i>
+                <label class="form-label" style="font-weight:600;">
+                  <i class="fa-solid fa-location-crosshairs" style="color:var(--primary);"></i>
                   GeoJSON Coordinates (for 2dsphere Spatial Index)
                 </label>
                 <div class="two-col">
                   <div class="form-group">
                     <label class="form-label" style="font-size:0.8rem;color:var(--text-muted);">Longitude</label>
-                    <input type="number" class="form-control" formControlName="longitude" step="any" placeholder="e.g. 77.2090" />
+                    <input type="number" class="form-control" formControlName="longitude" step="any" placeholder="e.g. 74.4750" />
                   </div>
                   <div class="form-group">
                     <label class="form-label" style="font-size:0.8rem;color:var(--text-muted);">Latitude</label>
-                    <input type="number" class="form-control" formControlName="latitude" step="any" placeholder="e.g. 28.6139" />
+                    <input type="number" class="form-control" formControlName="latitude" step="any" placeholder="e.g. 19.8820" />
                   </div>
                 </div>
-                <p class="geo-hint">These coordinates enable <code>$near</code> and <code>$geoWithin</code> queries on the 2dsphere index.</p>
+                <p class="geo-hint">These coordinates enable <code>$near</code> and <code>$geoWithin</code> queries on MongoDB's 2dsphere index.</p>
               </div>
 
-              <div class="form-group">
+              <div class="form-group" style="margin-bottom:0.5rem;">
                 <label class="form-label">Amenities (comma separated)</label>
-                <input type="text" class="form-control" formControlName="amenitiesInput" placeholder="e.g. Projector, AC, Whiteboard, Wi-Fi" />
+                <input type="text" class="form-control" formControlName="amenitiesInput" placeholder="e.g. Projector, AC, Sound System, Wi-Fi" />
               </div>
             </form>
           </div>
@@ -121,6 +138,7 @@ import { Venue } from '../../../core/models';
         </div>
       </div>
     </div>
+
   `,
   styles: [`
     .page-header-row { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem; }

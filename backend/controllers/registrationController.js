@@ -363,10 +363,17 @@ exports.getAttendees = asyncHandler(async (req, res) => {
   }
 
   const filter = { event: eventId };
-  if (status) filter.status = status;
+  if (status) {
+    filter.status = status;
+  } else if (req.user.role === 'student') {
+    filter.status = { $in: ['registered', 'checked-in'] };
+  }
 
+  // Sanitize fields based on role: students see name, interests, avatar for networking
+  const studentFields = req.user.role === 'student' ? 'name interests avatar' : 'name email phone avatar';
   let query = Registration.find(filter)
-    .populate('student', 'name email phone avatar');
+    .populate('student', studentFields);
+
 
   if (search) {
     // MongoDB Concept: When using populate with search, we need to match after populate.

@@ -13,7 +13,12 @@ import { ToastService } from '../../../core/services/toast.service';
     <div class="auth-page">
       <!-- Left Visual Hero Pane -->
       <div class="auth-visual">
+        <img src="assets/images/college-building.png" alt="Sanjivani Group of Institutes" class="visual-bg-img" />
         <div class="visual-overlay"></div>
+        <div class="college-top-label">
+          <i class="fa-solid fa-university"></i>
+          <span>Sanjivani Group of Institutes</span>
+        </div>
         <div class="visual-content">
           <div class="visual-badge">
             <i class="fa-solid fa-graduation-cap"></i> CampuSphere Portal
@@ -121,18 +126,64 @@ import { ToastService } from '../../../core/services/toast.service';
     }
     .auth-visual {
       flex: 1.1;
-      background: linear-gradient(145deg, #1A1A1A 0%, #2D1A10 100%), 
-                  radial-gradient(circle at top left, rgba(224,90,26,0.35) 0%, transparent 60%);
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
       padding: 4rem;
       position: relative;
       color: #FFFFFF;
+      overflow: hidden;
+      background: #111;
+    }
+    .visual-bg-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+      filter: brightness(0.75) saturate(1.1);
+      transition: transform 8s ease;
+      z-index: 0;
+    }
+    .auth-visual:hover .visual-bg-img {
+      transform: scale(1.05);
+    }
+    .college-top-label {
+      position: absolute;
+      top: 2rem;
+      left: 2.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #ffffff;
+      padding: 0.5rem 1.1rem;
+      border-radius: 50px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      z-index: 3;
+      animation: fadeSlideDown 0.8s ease;
+    }
+    .college-top-label i { color: #FFB38A; }
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .visual-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.15) 100%);
+      z-index: 1;
     }
     @media (max-width: 960px) {
       .auth-visual { display: none; }
     }
+
     .visual-content {
       position: relative;
       z-index: 2;
@@ -178,12 +229,15 @@ import { ToastService } from '../../../core/services/toast.service';
       border: 1px solid rgba(255, 255, 255, 0.15);
     }
     .auth-form-pane {
-      flex: 1;
+      flex: 1.05;
       display: flex;
       flex-direction: column;
       background: #FFFFFF;
-      padding: 2.5rem 3.5rem;
+      padding: 3rem 4.5rem;
       justify-content: space-between;
+    }
+    @media (max-width: 1100px) {
+      .auth-form-pane { padding: 2.5rem 3rem; }
     }
     @media (max-width: 600px) {
       .auth-form-pane { padding: 1.5rem; }
@@ -196,79 +250,126 @@ import { ToastService } from '../../../core/services/toast.service';
     .brand-logo-small {
       font-family: var(--font-heading);
       font-weight: 800;
-      font-size: 1.25rem;
+      font-size: 1.35rem;
       color: var(--text-main);
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.6rem;
     }
     .brand-logo-small i { color: var(--primary); }
     .auth-form-wrapper {
-      max-width: 440px;
+      max-width: 500px;
       width: 100%;
       margin: auto;
-      padding: 2rem 0;
+      padding: 2.5rem 0;
     }
     .form-eyebrow {
-      font-size: 0.75rem;
+      font-size: 0.82rem;
       font-weight: 800;
       color: var(--primary);
-      letter-spacing: 0.08em;
-      margin-bottom: 0.4rem;
-    }
-    .form-heading {
-      font-size: 2rem;
+      letter-spacing: 0.1em;
       margin-bottom: 0.5rem;
     }
+    .form-heading {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 0.6rem;
+    }
     .form-subtext {
-      font-size: 0.95rem;
-      margin-bottom: 1.5rem;
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-bottom: 1.75rem;
     }
     .demo-login-box {
       background: #FFF7ED;
       border: 1px dashed #FDBA74;
-      border-radius: var(--radius-sm);
-      padding: 0.75rem 1rem;
-      margin-bottom: 1.5rem;
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.75rem;
+      box-shadow: 0 2px 6px rgba(224, 90, 26, 0.05);
     }
     .demo-label {
       display: block;
-      font-size: 0.75rem;
+      font-size: 0.82rem;
       font-weight: 700;
       color: #9A3412;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.65rem;
     }
     .demo-buttons {
       display: flex;
-      gap: 0.5rem;
+      gap: 0.6rem;
     }
     .btn-demo {
       flex: 1;
-      padding: 0.35rem 0.5rem;
-      font-size: 0.75rem;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.82rem;
       font-weight: 700;
       border-radius: var(--radius-sm);
       border: 1px solid #FED7AA;
       background: #FFFFFF;
       cursor: pointer;
       color: #7C2D12;
-      transition: all 0.15s ease;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
     .btn-demo:hover {
       background: var(--primary);
       color: #FFFFFF;
       border-color: var(--primary);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(224, 90, 26, 0.25);
+    }
+    .form-group {
+      margin-bottom: 1.35rem;
+    }
+    .form-group .form-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+    .form-group .form-control {
+      padding: 0.85rem 1.1rem;
+      font-size: 1.02rem;
+      border-radius: 8px;
+      border: 1.5px solid #E5E7EB;
+      transition: all 0.2s ease;
+    }
+    .form-group .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(224, 90, 26, 0.12);
     }
     .btn-block {
       width: 100%;
-      margin-top: 1rem;
+      margin-top: 1.25rem;
+      padding: 0.9rem 1.5rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      border-radius: 8px;
+      letter-spacing: 0.01em;
+      box-shadow: 0 4px 14px rgba(224, 90, 26, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-block:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(224, 90, 26, 0.38);
     }
     .auth-footer {
-      margin-top: 1.5rem;
+      margin-top: 1.75rem;
       text-align: center;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+    .auth-footer a {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: underline;
     }
   `]
+
 })
 export class LoginComponent {
   private fb = inject(FormBuilder);

@@ -82,7 +82,43 @@ import { Event, Registration } from '../../../core/models';
               </div>
             </div>
           </div>
+
+          <!-- Connect with Other Attendees Section -->
+          <div class="card networking-card" style="margin-top:1.25rem;">
+            <div class="networking-header">
+              <div style="display:flex; align-items:center; gap:0.6rem;">
+                <i class="fa-solid fa-user-group" style="color:var(--primary); font-size:1.15rem;"></i>
+                <h3 style="margin:0; font-size:1.15rem; font-weight:700;">Connect with Other Attendees ({{ attendees().length }})</h3>
+              </div>
+              <span class="badge badge-primary" *ngIf="attendees().length">Live Networking</span>
+            </div>
+            <p class="networking-subtitle" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+              Meet peers attending this event and discover shared interests across campus!
+            </p>
+
+            <div class="attendees-network-grid" *ngIf="attendees().length">
+              <div *ngFor="let item of attendees()" class="attendee-chip-card">
+                <div class="attendee-avatar-sm">
+                  {{ (item.student?.name || 'Student').charAt(0).toUpperCase() }}
+                </div>
+                <div class="attendee-chip-info">
+                  <span class="attendee-chip-name">{{ item.student?.name || 'Registered Peer' }}</span>
+                  <div class="attendee-interests-wrap" *ngIf="item.student?.interests?.length">
+                    <span *ngFor="let interest of item.student.interests.slice(0, 2)" class="interest-mini-badge">
+                      {{ interest }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="empty-attendees" *ngIf="!attendees().length" style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.9rem;">
+              <i class="fa-regular fa-comments fa-2x" style="opacity:0.4; margin-bottom:0.5rem; display:block;"></i>
+              Be the first attendee to register and connect with classmates!
+            </div>
+          </div>
         </div>
+
 
         <!-- Sidebar Panel -->
         <div class="event-sidebar">
@@ -277,6 +313,55 @@ import { Event, Registration } from '../../../core/models';
     .organizer-stats { margin-top: 0.75rem; }
     .rating-row { font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); }
     .loading-state { text-align: center; padding: 4rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-muted); }
+    
+    /* Networking / Attendees Grid */
+    .networking-card { padding: 1.5rem; }
+    .networking-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; }
+    .attendees-network-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+    }
+    .attendee-chip-card {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.65rem 0.85rem;
+      background: #F9FAFB;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+    }
+    .attendee-chip-card:hover {
+      background: #FFFFFF;
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transform: translateY(-1px);
+    }
+    .attendee-avatar-sm {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .attendee-chip-info { display: flex; flex-direction: column; overflow: hidden; }
+    .attendee-chip-name { font-size: 0.85rem; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .attendee-interests-wrap { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.2rem; }
+    .interest-mini-badge {
+      font-size: 0.65rem;
+      padding: 0.1rem 0.4rem;
+      background: #EFF6FF;
+      color: #1D4ED8;
+      border-radius: 4px;
+      font-weight: 600;
+    }
   `]
 })
 export class EventDetailComponent implements OnInit {
@@ -289,6 +374,7 @@ export class EventDetailComponent implements OnInit {
 
   event = signal<Event | null>(null);
   myRegistration = signal<Registration | null>(null);
+  attendees = signal<any[]>([]);
   isLoading = true;
   isRegistering = false;
   isCancelling = false;
@@ -317,11 +403,21 @@ export class EventDetailComponent implements OnInit {
       error: () => { this.isLoading = false; }
     });
 
+    // Fetch fellow attendees for student networking
+    this.registrationService.getEventAttendees(id).subscribe({
+      next: res => {
+        if (res.success && res.data) {
+          this.attendees.set(res.data);
+        }
+      }
+    });
+
     // Check if already registered
     this.registrationService.getMyRegistrations().subscribe({
       next: res => {
         if (res.success && res.data) {
           const reg = res.data.find(r => {
+
             const ev = typeof r.event === 'object' ? (r.event as Event)._id : r.event;
             return ev === id;
           });
