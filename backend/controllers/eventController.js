@@ -143,7 +143,7 @@ exports.createEvent = asyncHandler(async (req, res) => {
   if (!errors.isEmpty()) throw ApiError.badRequest('Validation failed', errors.array());
 
   const { title, description, category, venueId, startDate, endDate,
-    capacity, budget, tags } = req.body;
+    capacity, budget, tags, tasks } = req.body;
 
   // Validate organizer status — only block explicitly rejected organizers
   if (req.user.role === 'organizer') {
@@ -185,6 +185,17 @@ exports.createEvent = asyncHandler(async (req, res) => {
     parsedTags = [];
   }
 
+  let parsedTasks = tasks;
+  if (typeof tasks === 'string') {
+    try {
+      parsedTasks = JSON.parse(tasks);
+    } catch (e) {
+      parsedTasks = [];
+    }
+  } else if (!Array.isArray(tasks)) {
+    parsedTasks = [];
+  }
+
   // Validate budget breakdown requirement
   const budgetThreshold = parseFloat(process.env.BUDGET_BREAKDOWN_THRESHOLD) || 10000;
   if (parsedBudget?.total > budgetThreshold && (!parsedBudget.breakdown || parsedBudget.breakdown.length === 0)) {
@@ -204,6 +215,7 @@ exports.createEvent = asyncHandler(async (req, res) => {
     capacity: parseInt(capacity),
     budget: parsedBudget,
     tags: parsedTags,
+    tasks: parsedTasks,
     posterUrl: req.processedImageUrl || null,
     // Admins can publish directly; organizers submit for approval
     status: req.user.role === 'admin' ? 'published' : 'pending',
@@ -238,7 +250,7 @@ exports.updateEvent = asyncHandler(async (req, res) => {
   }
 
   const allowedUpdates = ['title', 'description', 'category', 'startDate', 'endDate',
-    'capacity', 'budget', 'tags', 'posterUrl'];
+    'capacity', 'budget', 'tags', 'tasks', 'posterUrl'];
   const updates = {};
   allowedUpdates.forEach(field => {
     if (req.body[field] !== undefined) updates[field] = req.body[field];
@@ -257,6 +269,14 @@ exports.updateEvent = asyncHandler(async (req, res) => {
       updates.tags = JSON.parse(updates.tags);
     } catch (e) {
       updates.tags = updates.tags.split(',').map(t => t.trim()).filter(Boolean);
+    }
+  }
+
+  if (typeof updates.tasks === 'string') {
+    try {
+      updates.tasks = JSON.parse(updates.tasks);
+    } catch (e) {
+      updates.tasks = [];
     }
   }
 
@@ -373,6 +393,12 @@ exports.archiveEvent = asyncHandler(async (req, res) => {
   // Only admin or the organizer who created it
   if (req.user.role !== 'admin' && event.organizer.toString() !== req.user._id.toString()) {
     throw ApiError.forbidden('Not authorized to delete or archive this event');
+  }
+
+  if (req.user.role === 'organizer' && (
+    event.status === 'completed' || new Date(event.startDate) <= new Date()
+  )) {
+    throw ApiError.badRequest('Ongoing or completed events cannot be deleted');
   }
 
   // MongoDB Concept: Soft Delete via findByIdAndUpdate

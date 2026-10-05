@@ -56,6 +56,11 @@ export interface EventBudget {
   }>;
 }
 
+export interface EventTask {
+  title: string;
+  completed: boolean;
+}
+
 export interface Event {
   _id: string;
   title: string;
@@ -70,6 +75,7 @@ export interface Event {
   status: EventStatus;
   posterUrl?: string;
   budget?: EventBudget;
+  tasks?: EventTask[];
   views: number;
   clicks: number;
   tags?: string[];

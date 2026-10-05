@@ -103,6 +103,11 @@ const eventSchema = new mongoose.Schema({
     breakdown: [budgetItemSchema],
   },
 
+  tasks: [{
+    title: { type: String, trim: true, maxlength: 200 },
+    completed: { type: Boolean, default: false },
+  }],
+
   // Analytics fields — updated by separate routes
   views: { type: Number, default: 0 },
   clicks: { type: Number, default: 0 },

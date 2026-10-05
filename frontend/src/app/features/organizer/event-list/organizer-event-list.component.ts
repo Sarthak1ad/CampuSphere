@@ -73,7 +73,10 @@ import { Event } from '../../../core/models';
                     <a [routerLink]="['/organizer/events', event._id, 'edit']" class="btn btn-sm btn-outline">
                       <i class="fa-solid fa-pen"></i>
                     </a>
-                    <button class="btn btn-sm btn-danger" (click)="deleteEvent(event._id)">
+                    <a *ngIf="isCompletedOrPast(event)" [routerLink]="['/organizer/events', event._id, 'report']" class="btn btn-sm btn-outline" title="View completed event report">
+                      <i class="fa-solid fa-chart-column"></i>
+                    </a>
+                    <button class="btn btn-sm btn-danger" [disabled]="isLocked(event)" [title]="isLocked(event) ? 'Ongoing or completed events cannot be deleted' : 'Delete event'" (click)="deleteEvent(event)">
                       <i class="fa-solid fa-trash"></i>
                     </button>
                   </div>
@@ -122,15 +125,24 @@ export class OrganizerEventListComponent implements OnInit {
     });
   }
 
-  deleteEvent(id: string): void {
+  deleteEvent(event: Event): void {
+    if (this.isLocked(event)) return;
     if (!confirm('Delete this event? This cannot be undone.')) return;
-    this.eventService.deleteEvent(id).subscribe({
+    this.eventService.deleteEvent(event._id).subscribe({
       next: () => {
-        this.events.update(list => list.filter(e => e._id !== id));
+        this.events.update(list => list.filter(e => e._id !== event._id));
         this.toastService.success('Event deleted.');
       },
       error: err => this.toastService.error(err.error?.message || 'Failed to delete.')
     });
+  }
+
+  isLocked(event: Event): boolean {
+    return event.status === 'completed' || new Date(event.startDate).getTime() <= Date.now();
+  }
+
+  isCompletedOrPast(event: Event): boolean {
+    return event.status === 'completed' || new Date(event.endDate).getTime() <= Date.now();
   }
 
   getVenueName(event: Event): string {

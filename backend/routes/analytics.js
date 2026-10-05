@@ -15,6 +15,7 @@ router.get('/admin/export/:type', protect, authorize('admin'), ctrl.exportCSV);
 
 // Organizer reports
 router.get('/organizer/events', protect, authorize('admin', 'organizer'), ctrl.organizerEventAnalytics);
+router.get('/organizer/events/:eventId/report', protect, authorize('admin', 'organizer'), ctrl.completedEventReport);
 router.get('/organizer/feedback/:eventId', protect, authorize('admin', 'organizer'), ctrl.feedbackAnalysis);
 
 module.exports = router;

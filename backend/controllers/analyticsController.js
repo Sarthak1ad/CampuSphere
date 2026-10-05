@@ -282,6 +282,34 @@ exports.organizerEventAnalytics = asyncHandler(async (req, res) => {
   res.json({ success: true, data: { events: analytics, summary: summary[0] } });
 });
 
+// ── ORGANIZER: COMPLETED EVENT REPORT ───────────────────────────────────────
+exports.completedEventReport = asyncHandler(async (req, res) => {
+  const event = await Event.findOne({
+    _id: req.params.eventId,
+    organizer: req.user._id,
+  }).select('title status endDate tasks');
+
+  if (!event) throw require('../utils/ApiError').notFound('Event not found');
+  if (event.status !== 'completed' && new Date(event.endDate) > new Date()) {
+    throw require('../utils/ApiError').badRequest('Reports are available after the event is completed');
+  }
+
+  const participantCounts = await Registration.aggregate([
+    { $match: { event: event._id } },
+    { $group: { _id: '$status', count: { $sum: 1 } } },
+    { $sort: { _id: 1 } },
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      event: { _id: event._id, title: event.title, status: event.status, endDate: event.endDate },
+      tasks: event.tasks || [],
+      participants: participantCounts.map(item => ({ status: item._id, count: item.count })),
+    },
+  });
+});
+
 // ── ORGANIZER: FEEDBACK ANALYSIS ──────────────────────────────────────────────
 exports.feedbackAnalysis = asyncHandler(async (req, res) => {
   const { eventId } = req.params;
