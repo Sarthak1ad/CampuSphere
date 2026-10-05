@@ -171,10 +171,13 @@ exports.register = asyncHandler(async (req, res) => {
       _id: registration._id,
       status: registration.status,
       qrToken: registration.qrToken,
+      qrCodeDataUrl: registration.qrCodeDataUrl,
+      qrDataUrl: registration.qrCodeDataUrl,
       waitlistPosition: registration.waitlistPosition,
     },
   });
 });
+
 
 // ── CANCEL REGISTRATION ───────────────────────────────────────────────────────
 exports.cancelRegistration = asyncHandler(async (req, res) => {
@@ -182,16 +185,23 @@ exports.cancelRegistration = asyncHandler(async (req, res) => {
 
   try {
     await session.withTransaction(async () => {
-      const reg = await Registration.findOne({
-        event: req.params.eventId,
-        student: req.user._id,
-        status: { $in: ['registered', 'waitlisted'] },
-      }).session(session);
+      const targetId = req.params.eventId || req.params.id;
+      let reg = null;
+
+      if (mongoose.Types.ObjectId.isValid(targetId)) {
+        reg = await Registration.findOne({
+          $or: [
+            { event: targetId, student: req.user._id },
+            { _id: targetId, student: req.user._id }
+          ],
+          status: { $in: ['registered', 'waitlisted'] },
+        }).session(session);
+      }
 
       if (!reg) throw ApiError.notFound('No active registration found for this event');
 
       const event = await Event.findById(reg.event).session(session);
-      if (event.startDate <= new Date()) {
+      if (event && event.startDate <= new Date()) {
         throw ApiError.badRequest('Cannot cancel after event has started');
       }
 
@@ -249,8 +259,8 @@ exports.cancelRegistration = asyncHandler(async (req, res) => {
             user: nextWaitlisted.student,
             type: 'waitlist_promoted',
             title: 'You got a spot!',
-            message: `A spot opened up in "${event.title}". You're now registered!`,
-            relatedEntity: { entityType: 'Event', entityId: event._id },
+            message: `A spot opened up in "${event?.title || 'the event'}". You're now registered!`,
+            relatedEntity: { entityType: 'Event', entityId: event?._id },
           });
         }
       }
@@ -262,16 +272,28 @@ exports.cancelRegistration = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Registration cancelled successfully' });
 });
 
-// ── CHECK-IN VIA QR TOKEN ─────────────────────────────────────────────────────
+// ── CHECK-IN VIA QR TOKEN OR STUDENT ID ───────────────────────────────────────
 exports.checkIn = asyncHandler(async (req, res) => {
-  const { qrToken } = req.body;
+  const { qrToken, studentId } = req.body;
+  const eventId = req.params.eventId;
 
-  // MongoDB Concept: O(1) lookup using the qrToken index
-  const reg = await Registration.findOne({ qrToken })
-    .populate('student', 'name email')
-    .populate('event', 'title startDate endDate organizer');
+  let reg = null;
 
-  if (!reg) throw ApiError.notFound('Invalid QR code');
+  if (qrToken) {
+    // MongoDB Concept: O(1) lookup using the qrToken index
+    reg = await Registration.findOne({ qrToken })
+      .populate('student', 'name email')
+      .populate('event', 'title startDate endDate organizer');
+  } else if (studentId && eventId) {
+    reg = await Registration.findOne({ student: studentId, event: eventId })
+      .populate('student', 'name email')
+      .populate('event', 'title startDate endDate organizer');
+  } else {
+    throw ApiError.badRequest('Either qrToken or studentId is required for check-in');
+  }
+
+  if (!reg) throw ApiError.notFound('Invalid ticket or attendee not found');
+
 
   // Verify organizer owns this event
   if (req.user.role === 'organizer') {
@@ -314,13 +336,14 @@ exports.checkIn = asyncHandler(async (req, res) => {
 
 // ── GET MY REGISTRATIONS ──────────────────────────────────────────────────────
 exports.getMyRegistrations = asyncHandler(async (req, res) => {
-  const { status, page = 1, limit = 10 } = req.query;
+  const { status, page = 1, limit = 20 } = req.query;
 
   const filter = { student: req.user._id };
   if (status) filter.status = status;
 
   const total = await Registration.countDocuments(filter);
-  const registrations = await Registration.find(filter)
+  const rawRegistrations = await Registration.find(filter)
+    .select('+qrCodeDataUrl')
     .populate({
       path: 'event',
       select: 'title category startDate endDate posterUrl status avgRating',
@@ -329,6 +352,22 @@ exports.getMyRegistrations = asyncHandler(async (req, res) => {
     .sort('-createdAt')
     .skip((parseInt(page) - 1) * parseInt(limit))
     .limit(parseInt(limit));
+
+  // Ensure QR Code Data URL is populated for all registered tickets
+  const registrations = await Promise.all(
+    rawRegistrations.map(async (doc) => {
+      const obj = doc.toObject();
+      if (!obj.qrCodeDataUrl && obj.qrToken && obj.status === 'registered') {
+        try {
+          obj.qrCodeDataUrl = await QRCode.toDataURL(obj.qrToken, { width: 300, margin: 2, errorCorrectionLevel: 'H' });
+        } catch (e) {
+          // ignore error
+        }
+      }
+      obj.qrDataUrl = obj.qrCodeDataUrl;
+      return obj;
+    })
+  );
 
   res.json({
     success: true,
@@ -347,8 +386,14 @@ exports.getQRCode = asyncHandler(async (req, res) => {
 
   if (!reg) throw ApiError.notFound('Registration not found');
 
-  res.json({ success: true, data: { qrToken: reg.qrToken, qrCodeDataUrl: reg.qrCodeDataUrl } });
+  let qrCodeDataUrl = reg.qrCodeDataUrl;
+  if (!qrCodeDataUrl && reg.qrToken) {
+    qrCodeDataUrl = await QRCode.toDataURL(reg.qrToken, { width: 300, margin: 2, errorCorrectionLevel: 'H' });
+  }
+
+  res.json({ success: true, data: { qrToken: reg.qrToken, qrCodeDataUrl, qrDataUrl: qrCodeDataUrl } });
 });
+
 
 // ── GET EVENT ATTENDEES (Organizer/Admin) ─────────────────────────────────────
 exports.getAttendees = asyncHandler(async (req, res) => {

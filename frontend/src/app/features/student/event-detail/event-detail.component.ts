@@ -214,7 +214,8 @@ import { Event, Registration } from '../../../core/models';
     <!-- QR Modal -->
     <app-qr-modal
       *ngIf="showQrModal && myRegistration()"
-      [qrDataUrl]="myRegistration()?.qrDataUrl"
+      [qrDataUrl]="myRegistration()?.qrDataUrl || myRegistration()?.qrCodeDataUrl"
+      [qrToken]="myRegistration()?.qrToken || ''"
       [eventTitle]="event()?.title || ''"
       [studentName]="authService.currentUser()?.name || ''"
       [venueName]="getVenueName()"
@@ -222,6 +223,7 @@ import { Event, Registration } from '../../../core/models';
       [status]="myRegistration()?.status || ''"
       (close)="showQrModal = false"
     ></app-qr-modal>
+
   `,
   styles: [`
     .breadcrumb-nav {
