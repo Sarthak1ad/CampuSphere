@@ -45,6 +45,10 @@ export class AnalyticsService {
     return this.http.get<ApiResponse<any>>(`${this.apiUrl}/organizer/events`, { params });
   }
 
+  getCompletedEventReport(eventId: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/organizer/events/${eventId}/report`);
+  }
+
   getOrganizerFeedbackAnalysis(eventId?: string): Observable<ApiResponse<any>> {
     const params = eventId ? new HttpParams().set('eventId', eventId) : undefined;
     return this.http.get<ApiResponse<any>>(`${this.apiUrl}/organizer/feedback`, { params });

@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { EventService } from '../../../core/services/event.service';
 import { VenueService } from '../../../core/services/venue.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { Venue, EventCategory } from '../../../core/models';
+import { Event as CampusEvent, Venue, EventCategory } from '../../../core/models';
 
 @Component({
   selector: 'app-event-form',
@@ -130,6 +130,20 @@ import { Venue, EventCategory } from '../../../core/models';
                 <i class="fa-solid fa-plus"></i> Add Budget Item
               </button>
             </div>
+
+            <div class="card form-section">
+              <h3 class="section-title"><i class="fa-solid fa-list-check" style="color:var(--primary);"></i> Event Tasks</h3>
+              <p class="form-help">Add the main tasks completed for this event. They will appear in the completed event report.</p>
+              <div formArrayName="tasks">
+                <div *ngFor="let task of taskItems.controls; let i = index" [formGroupName]="i" class="task-row">
+                  <input type="text" class="form-control" formControlName="title" placeholder="Task (e.g. Registration desk setup)" />
+                  <button type="button" class="btn btn-sm btn-danger" (click)="removeTask(i)"><i class="fa-solid fa-minus"></i></button>
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline" (click)="addTask()" style="margin-top:0.5rem;">
+                <i class="fa-solid fa-plus"></i> Add Task
+              </button>
+            </div>
           </div>
 
           <!-- Right: Poster & Submit -->
@@ -190,6 +204,8 @@ import { Venue, EventCategory } from '../../../core/models';
     .two-col { display:grid;grid-template-columns:1fr 1fr;gap:1rem; }
     @media (max-width:640px) { .two-col { grid-template-columns:1fr; } }
     .budget-row { display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center; }
+    .task-row { display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center; }
+    .form-help { color:var(--text-muted);font-size:0.85rem;margin:0 0 0.75rem; }
     .poster-upload-zone {
       border:2px dashed var(--border-light);border-radius:var(--radius-md);
       padding:1.5rem;cursor:pointer;text-align:center;
@@ -278,7 +294,7 @@ export class EventFormComponent implements OnInit {
   posterPreview: string | null = null;
   posterFile: File | null = null;
   venues = signal<Venue[]>([]);
-  existingEvents = signal<Event[]>([]);
+  existingEvents = signal<CampusEvent[]>([]);
 
   // Current form values tracking for real-time reactivity
   currentVenue = signal<string>('');
@@ -294,14 +310,16 @@ export class EventFormComponent implements OnInit {
     capacity: [100, [Validators.required, Validators.min(1)]],
     startDate: ['', [Validators.required, this.futureDateValidator()]],
     endDate: ['', Validators.required],
-    venue: [''],
+    venue: ['', Validators.required],
     tagsInput: [''],
     budgetTotal: [0],
-    budgetBreakdown: this.fb.array([])
+    budgetBreakdown: this.fb.array([]),
+    tasks: this.fb.array([])
   }, { validators: this.dateRangeValidator() });
 
   get f() { return this.eventForm.controls; }
   get budgetItems(): FormArray { return this.eventForm.get('budgetBreakdown') as FormArray; }
+  get taskItems(): FormArray { return this.eventForm.get('tasks') as FormArray; }
   get descLen(): number { return (this.f['description'].value || '').length; }
 
   // Real-Time Venue Conflict Detector
@@ -398,11 +416,12 @@ export class EventFormComponent implements OnInit {
             tagsInput: (e.tags || []).join(', '),
             budgetTotal: e.budget?.total || 0
           });
-
+          (e.tasks || []).forEach(task => this.taskItems.push(this.fb.group({
+            title: [task.title, [Validators.required, Validators.maxLength(200)]],
+          })));
           this.currentVenue.set(vId || '');
           this.currentStartDate.set(sDate);
           this.currentEndDate.set(eDate);
-
           if (e.posterUrl) this.posterPreview = e.posterUrl;
         }
       });
@@ -415,6 +434,14 @@ export class EventFormComponent implements OnInit {
 
   removeBudgetItem(i: number): void {
     this.budgetItems.removeAt(i);
+  }
+
+  addTask(): void {
+    this.taskItems.push(this.fb.group({ title: ['', [Validators.required, Validators.maxLength(200)]] }));
+  }
+
+  removeTask(i: number): void {
+    this.taskItems.removeAt(i);
   }
 
   onFileChange(event: Event): void {
@@ -480,6 +507,10 @@ export class EventFormComponent implements OnInit {
       total: val.budgetTotal,
       breakdown: val.budgetBreakdown
     }));
+    formData.append('tasks', JSON.stringify((val.tasks || []).map((task: { title: string }) => ({
+      title: task.title,
+      completed: false,
+    }))));
     if (this.posterFile) formData.append('poster', this.posterFile);
 
     const req$ = this.isEditMode

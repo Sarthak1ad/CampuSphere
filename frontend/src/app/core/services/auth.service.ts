@@ -33,15 +33,7 @@ export class AuthService {
   }
 
   register(userData: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/register`, userData).pipe(
-      tap(res => {
-        const token = res.data?.token || res.token;
-        const user = res.data?.user || res.user;
-        if (token && user) {
-          this.setSession(token, user);
-        }
-      })
-    );
+    return this.http.post<any>(`${this.apiUrl}/register`, userData);
   }
 
   login(credentials: { email: string; password: string }): Observable<any> {

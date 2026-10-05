@@ -83,12 +83,11 @@ import { Event } from '../../../core/models';
                     <a [routerLink]="['/organizer/events', event._id, 'edit']" class="btn btn-sm btn-outline" title="Edit Event">
                       <i class="fa-solid fa-pen"></i>
                     </a>
-                    <button 
-                      class="btn btn-sm"
-                      [ngClass]="isOngoing(event) ? 'btn-disabled-ongoing' : 'btn-danger'" 
-                      (click)="deleteEvent(event)"
-                      [title]="isOngoing(event) ? 'Cannot delete an ongoing live event' : 'Delete Event'">
-                      <i class="fa-solid" [ngClass]="isOngoing(event) ? 'fa-ban' : 'fa-trash'"></i>
+                    <a *ngIf="isCompletedOrPast(event)" [routerLink]="['/organizer/events', event._id, 'report']" class="btn btn-sm btn-outline" title="View completed event report">
+                      <i class="fa-solid fa-chart-column"></i>
+                    </a>
+                    <button class="btn btn-sm btn-danger" [disabled]="isLocked(event)" [title]="isLocked(event) ? 'Ongoing or completed events cannot be deleted' : 'Delete event'" (click)="deleteEvent(event)">
+                      <i class="fa-solid fa-trash"></i>
                     </button>
                   </div>
                 </td>
@@ -173,32 +172,33 @@ export class OrganizerEventListComponent implements OnInit {
     });
   }
 
-  isOngoing(event: Event): boolean {
-    if (event.status !== 'published') return false;
-    const now = new Date();
-    return new Date(event.startDate) <= now && now <= new Date(event.endDate);
-  }
-
   deleteEvent(event: Event): void {
-    // Front-end block & Alert for ongoing events
-    if (this.isOngoing(event)) {
-      this.toastService.warning(
-        `⚠️ Cannot delete "${event.title}"! This event is actively ongoing right now. Club organizers cannot delete running events. Please contact an administrator if cancellation is needed.`
-      );
-      return;
-    }
-
-    if (!confirm(`Are you sure you want to delete "${event.title}"? This cannot be undone.`)) return;
-
+    if (this.isLocked(event)) return;
+    if (!confirm('Delete this event? This cannot be undone.')) return;
     this.eventService.deleteEvent(event._id).subscribe({
       next: () => {
         this.events.update(list => list.filter(e => e._id !== event._id));
-        this.toastService.success(`Event "${event.title}" deleted.`);
+        this.toastService.success('Event deleted.');
       },
       error: err => {
         this.toastService.error(err.error?.message || 'Failed to delete event.');
       }
     });
+  }
+
+  isLocked(event: Event): boolean {
+    return event.status === 'completed' || new Date(event.startDate).getTime() <= Date.now();
+  }
+
+  isOngoing(event: Event): boolean {
+    const now = Date.now();
+    return event.status === 'published'
+      && new Date(event.startDate).getTime() <= now
+      && new Date(event.endDate).getTime() >= now;
+  }
+
+  isCompletedOrPast(event: Event): boolean {
+    return event.status === 'completed' || new Date(event.endDate).getTime() <= Date.now();
   }
 
   getVenueName(event: Event): string {
