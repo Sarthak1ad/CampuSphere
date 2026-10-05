@@ -42,5 +42,6 @@ router.put('/:id',
 
 router.patch('/:id/review', protect, authorize('admin'), ctrl.reviewEvent);
 router.patch('/:id/archive', protect, authorize('admin', 'organizer'), ctrl.archiveEvent);
+router.delete('/:id', protect, authorize('admin', 'organizer'), ctrl.archiveEvent);
 
 module.exports = router;

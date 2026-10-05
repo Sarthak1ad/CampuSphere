@@ -148,11 +148,33 @@ eventSchema.virtual('durationHours').get(function () {
   return ((this.endDate - this.startDate) / (1000 * 60 * 60)).toFixed(1);
 });
 
-// ── PRE-SAVE VALIDATION HOOK ──────────────────────────────────────────────────
-// MongoDB Concept: Middleware Hook
-// Runs synchronously before every save. We validate business rules here
-// that are too complex for simple schema validators.
+// ── PRE-VALIDATE & PRE-SAVE NORMALIZATION HOOKS ──────────────────────────────
+eventSchema.pre('validate', function (next) {
+  if (typeof this.budget === 'string') {
+    try {
+      this.budget = JSON.parse(this.budget);
+    } catch (e) {
+      this.budget = { total: 0, breakdown: [] };
+    }
+  }
+  if (typeof this.tags === 'string') {
+    try {
+      this.tags = JSON.parse(this.tags);
+    } catch (e) {
+      this.tags = this.tags.split(',').map(t => t.trim()).filter(Boolean);
+    }
+  }
+  next();
+});
+
 eventSchema.pre('save', function (next) {
+  if (typeof this.budget === 'string') {
+    try {
+      this.budget = JSON.parse(this.budget);
+    } catch (e) {
+      this.budget = { total: 0, breakdown: [] };
+    }
+  }
   // Rule: endDate must be at least 1 hour after startDate
   if (this.startDate && this.endDate) {
     const diffMs = this.endDate - this.startDate;

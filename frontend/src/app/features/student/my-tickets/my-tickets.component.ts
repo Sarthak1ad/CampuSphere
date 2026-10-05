@@ -88,13 +88,13 @@ import { Registration, Event } from '../../../core/models';
     <!-- QR Modal -->
     <app-qr-modal
       *ngIf="selectedReg"
-      [qrDataUrl]="selectedReg?.qrDataUrl || selectedReg?.qrCodeDataUrl"
-      [qrToken]="selectedReg?.qrToken || ''"
-      [eventTitle]="getEvent(selectedReg!)?.title || ''"
+      [qrDataUrl]="selectedReg.qrDataUrl || selectedReg.qrCodeDataUrl"
+      [qrToken]="selectedReg.qrToken || ''"
+      [eventTitle]="getEvent(selectedReg)?.title || ''"
       [studentName]="authService.currentUser()?.name || ''"
-      [venueName]="getVenueName(selectedReg!)"
-      [eventDate]="getEvent(selectedReg!)?.startDate || ''"
-      [status]="selectedReg?.status || ''"
+      [venueName]="getVenueName(selectedReg)"
+      [eventDate]="getEvent(selectedReg)?.startDate || ''"
+      [status]="selectedReg.status || ''"
       (close)="selectedReg = null"
     ></app-qr-modal>
 

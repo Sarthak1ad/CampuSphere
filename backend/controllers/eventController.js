@@ -34,13 +34,11 @@ exports.getEvents = asyncHandler(async (req, res) => {
   // Only non-admin users see published events by default
   if (req.user?.role === 'admin') {
     if (status) filter.status = status;
+    else filter.status = { $ne: 'archived' };
   } else if (req.user?.role === 'organizer') {
-    // Organizer sees their own events in any status + all published events
-    filter.$or = [
-      { organizer: req.user._id },
-      { status: 'published' },
-    ];
+    filter.organizer = req.user._id;
     if (status) filter.status = status;
+    else filter.status = { $ne: 'archived' };
   } else {
     // Students and guests see only published events
     filter.status = 'published';
@@ -164,9 +162,32 @@ exports.createEvent = asyncHandler(async (req, res) => {
     );
   }
 
+  // Parse budget and tags if received as strings (from multipart FormData)
+  let parsedBudget = budget;
+  if (typeof budget === 'string') {
+    try {
+      parsedBudget = JSON.parse(budget);
+    } catch (e) {
+      parsedBudget = { total: 0, breakdown: [] };
+    }
+  } else if (!budget) {
+    parsedBudget = { total: 0, breakdown: [] };
+  }
+
+  let parsedTags = tags;
+  if (typeof tags === 'string') {
+    try {
+      parsedTags = JSON.parse(tags);
+    } catch (e) {
+      parsedTags = tags.split(',').map(t => t.trim()).filter(Boolean);
+    }
+  } else if (!tags) {
+    parsedTags = [];
+  }
+
   // Validate budget breakdown requirement
   const budgetThreshold = parseFloat(process.env.BUDGET_BREAKDOWN_THRESHOLD) || 10000;
-  if (budget?.total > budgetThreshold && (!budget.breakdown || budget.breakdown.length === 0)) {
+  if (parsedBudget?.total > budgetThreshold && (!parsedBudget.breakdown || parsedBudget.breakdown.length === 0)) {
     throw ApiError.badRequest(
       `Budget breakdown is required when total budget exceeds ₹${budgetThreshold}`
     );
@@ -181,8 +202,8 @@ exports.createEvent = asyncHandler(async (req, res) => {
     startDate: new Date(startDate),
     endDate: new Date(endDate),
     capacity: parseInt(capacity),
-    budget: budget || { total: 0, breakdown: [] },
-    tags: tags || [],
+    budget: parsedBudget,
+    tags: parsedTags,
     posterUrl: req.processedImageUrl || null,
     // Admins can publish directly; organizers submit for approval
     status: req.user.role === 'admin' ? 'published' : 'pending',
@@ -222,6 +243,22 @@ exports.updateEvent = asyncHandler(async (req, res) => {
   allowedUpdates.forEach(field => {
     if (req.body[field] !== undefined) updates[field] = req.body[field];
   });
+
+  if (typeof updates.budget === 'string') {
+    try {
+      updates.budget = JSON.parse(updates.budget);
+    } catch (e) {
+      delete updates.budget;
+    }
+  }
+
+  if (typeof updates.tags === 'string') {
+    try {
+      updates.tags = JSON.parse(updates.tags);
+    } catch (e) {
+      updates.tags = updates.tags.split(',').map(t => t.trim()).filter(Boolean);
+    }
+  }
 
   if (req.processedImageUrl) updates.posterUrl = req.processedImageUrl;
 
@@ -283,20 +320,41 @@ exports.reviewEvent = asyncHandler(async (req, res) => {
   }
 
   const newStatus = action === 'approve' ? 'published' : 'rejected';
-  event.status = newStatus;
-  event.adminNote = note;
-  await event.save();
+
+  // Sanitize budget if previously saved as string
+  let cleanBudget = event.budget;
+  if (typeof cleanBudget === 'string') {
+    try {
+      cleanBudget = JSON.parse(cleanBudget);
+    } catch (e) {
+      cleanBudget = { total: 0, breakdown: [] };
+    }
+  }
+
+  const updatedEvent = await Event.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: {
+        status: newStatus,
+        adminNote: note || '',
+        ...(typeof event.budget === 'string' ? { budget: cleanBudget } : {})
+      }
+    },
+    { new: true }
+  ).populate('organizer venue');
 
   // Notify the organizer
-  await Notification.create({
-    user: event.organizer._id,
-    type: action === 'approve' ? 'event_approved' : 'event_rejected',
-    title: `Event ${action === 'approve' ? 'Approved' : 'Rejected'}: ${event.title}`,
-    message: action === 'approve'
-      ? `Your event "${event.title}" has been approved and is now published!`
-      : `Your event "${event.title}" was rejected. Reason: ${note || 'No reason provided'}`,
-    relatedEntity: { entityType: 'Event', entityId: event._id },
-  });
+  if (event.organizer?._id) {
+    await Notification.create({
+      user: event.organizer._id,
+      type: action === 'approve' ? 'event_approved' : 'event_rejected',
+      title: `Event ${action === 'approve' ? 'Approved' : 'Rejected'}: ${event.title}`,
+      message: action === 'approve'
+        ? `Your event "${event.title}" has been approved and is now published!`
+        : `Your event "${event.title}" was rejected. Reason: ${note || 'No reason provided'}`,
+      relatedEntity: { entityType: 'Event', entityId: event._id },
+    });
+  }
 
   await auditLog({
     actor: req.user, action: `event.${action}`, entity: 'Event',
@@ -304,7 +362,7 @@ exports.reviewEvent = asyncHandler(async (req, res) => {
     ipAddress: req.ip, level: 'warning',
   });
 
-  res.json({ success: true, message: `Event ${action}d successfully`, data: event });
+  res.json({ success: true, message: `Event ${action}d successfully`, data: updatedEvent });
 });
 
 // ── DELETE (ARCHIVE) EVENT ────────────────────────────────────────────────────
@@ -314,22 +372,23 @@ exports.archiveEvent = asyncHandler(async (req, res) => {
 
   // Only admin or the organizer who created it
   if (req.user.role !== 'admin' && event.organizer.toString() !== req.user._id.toString()) {
-    throw ApiError.forbidden('Not authorized to archive this event');
+    throw ApiError.forbidden('Not authorized to delete or archive this event');
   }
 
-  // MongoDB Concept: Soft Delete
-  // We set status to 'archived' instead of actually deleting the document.
-  // This preserves the audit trail and registration history.
-  event.status = 'archived';
-  event.adminNote = req.body.reason || 'Archived';
-  await event.save();
+  // MongoDB Concept: Soft Delete via findByIdAndUpdate
+  await Event.findByIdAndUpdate(req.params.id, {
+    $set: {
+      status: 'archived',
+      adminNote: req.body?.reason || 'Deleted by user'
+    }
+  });
 
   await auditLog({
     actor: req.user, action: 'event.archive', entity: 'Event',
-    entityId: event._id, meta: { reason: req.body.reason }, ipAddress: req.ip,
+    entityId: event._id, meta: { reason: req.body?.reason }, ipAddress: req.ip,
   });
 
-  res.json({ success: true, message: 'Event archived successfully' });
+  res.json({ success: true, message: 'Event deleted successfully' });
 });
 
 // ── GET EVENT RECOMMENDATIONS FOR STUDENT ────────────────────────────────────
