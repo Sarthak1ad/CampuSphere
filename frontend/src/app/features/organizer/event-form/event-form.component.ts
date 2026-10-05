@@ -1,11 +1,11 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { EventService } from '../../../core/services/event.service';
 import { VenueService } from '../../../core/services/venue.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { Venue, EventCategory } from '../../../core/models';
+import { Event as CampusEvent, Venue, EventCategory } from '../../../core/models';
 
 @Component({
   selector: 'app-event-form',
@@ -79,12 +79,29 @@ import { Venue, EventCategory } from '../../../core/models';
 
               <div class="form-group">
                 <label class="form-label">Venue</label>
-                <select class="form-select" formControlName="venue">
+                <select class="form-select" formControlName="venue" [class.is-invalid]="venueConflict()">
                   <option value="">Select Venue</option>
                   <option *ngFor="let venue of venues()" [value]="venue._id">
                     {{ venue.name }} ({{ venue.address.city }}) — Capacity: {{ venue.capacity }}
                   </option>
                 </select>
+              </div>
+
+              <!-- Real-Time Venue Conflict Alert Box -->
+              <div *ngIf="venueConflict()" class="alert-venue-conflict">
+                <div class="conflict-icon">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="conflict-content">
+                  <h4>⚠️ Venue Conflict Detected!</h4>
+                  <p>
+                    <strong>"{{ venueConflict()?.title }}"</strong> is already scheduled at <strong>{{ venueConflict()?.venueName }}</strong> from 
+                    <span>{{ venueConflict()?.startDate | date:'mediumDate' }} ({{ venueConflict()?.startDate | date:'shortTime' }} &ndash; {{ venueConflict()?.endDate | date:'shortTime' }})</span>.
+                  </p>
+                  <div class="conflict-advice">
+                    <i class="fa-solid fa-lightbulb"></i> Please <strong>select a different venue</strong> or <strong>adjust your event date & time</strong>.
+                  </div>
+                </div>
               </div>
 
               <div class="form-group">
@@ -153,8 +170,13 @@ import { Venue, EventCategory } from '../../../core/models';
                 Save as draft or submit for admin review. Published events appear on the student portal.
               </p>
 
+              <!-- Warning Banner in Sidebar if Conflict -->
+              <div *ngIf="venueConflict()" class="sidebar-conflict-alert">
+                <i class="fa-solid fa-ban"></i> Venue conflict must be resolved before submitting.
+              </div>
+
               <div style="display:flex;flex-direction:column;gap:0.75rem;">
-                <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
+                <button type="submit" class="btn btn-primary" [disabled]="isSubmitting || !!venueConflict()">
                   <span *ngIf="isSubmitting"><i class="fa-solid fa-spinner fa-spin"></i> {{ isEditMode ? 'Saving...' : 'Submitting...' }}</span>
                   <span *ngIf="!isSubmitting">
                     <i class="fa-solid fa-paper-plane"></i> {{ isEditMode ? 'Save Changes' : 'Submit for Approval' }}
@@ -196,6 +218,66 @@ import { Venue, EventCategory } from '../../../core/models';
     .char-hint { font-size:0.75rem; font-weight:600; margin-left:0.4rem; }
     .char-warn { color: #DC2626; }
     .char-ok { color: #16A34A; }
+
+    /* Venue Conflict Alert Styles */
+    .alert-venue-conflict {
+      display: flex;
+      gap: 1rem;
+      background: #FEF2F2;
+      border: 1.5px solid #F87171;
+      border-radius: var(--radius-md, 8px);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+      color: #991B1B;
+      animation: shakeConflict 0.4s ease;
+    }
+    .conflict-icon {
+      font-size: 1.4rem;
+      color: #DC2626;
+      flex-shrink: 0;
+      margin-top: 0.15rem;
+    }
+    .conflict-content h4 {
+      margin: 0 0 0.35rem 0;
+      color: #B91C1C;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .conflict-content p {
+      margin: 0 0 0.45rem 0;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      color: #7F1D1D;
+    }
+    .conflict-advice {
+      font-size: 0.82rem;
+      color: #B45309;
+      background: #FFFBEB;
+      padding: 0.4rem 0.65rem;
+      border-radius: 6px;
+      border: 1px solid #FDE68A;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .sidebar-conflict-alert {
+      background: #FEE2E2;
+      border: 1px solid #FCA5A5;
+      color: #B91C1C;
+      padding: 0.65rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    @keyframes shakeConflict {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-4px); }
+      40%, 80% { transform: translateX(4px); }
+    }
   `]
 })
 export class EventFormComponent implements OnInit {
@@ -212,6 +294,12 @@ export class EventFormComponent implements OnInit {
   posterPreview: string | null = null;
   posterFile: File | null = null;
   venues = signal<Venue[]>([]);
+  existingEvents = signal<CampusEvent[]>([]);
+
+  // Current form values tracking for real-time reactivity
+  currentVenue = signal<string>('');
+  currentStartDate = signal<string>('');
+  currentEndDate = signal<string>('');
 
   categories: EventCategory[] = ['Academic', 'Cultural', 'Sports', 'Social', 'Workshop', 'Seminar'];
 
@@ -234,6 +322,43 @@ export class EventFormComponent implements OnInit {
   get taskItems(): FormArray { return this.eventForm.get('tasks') as FormArray; }
   get descLen(): number { return (this.f['description'].value || '').length; }
 
+  // Real-Time Venue Conflict Detector
+  venueConflict = computed(() => {
+    const vId = this.currentVenue();
+    const startVal = this.currentStartDate();
+    const endVal = this.currentEndDate();
+
+    if (!vId || !startVal || !endVal) return null;
+
+    const start = new Date(startVal).getTime();
+    const end = new Date(endVal).getTime();
+    if (isNaN(start) || isNaN(end) || end <= start) return null;
+
+    const conflict = this.existingEvents().find(ev => {
+      if (this.eventId && ev._id === this.eventId) return false;
+      const evVenueId = typeof ev.venue === 'object' ? ev.venue?._id : ev.venue;
+      if (evVenueId !== vId) return false;
+      if (!['published', 'pending', 'ongoing'].includes(ev.status)) return false;
+
+      const evStart = new Date(ev.startDate).getTime();
+      const evEnd = new Date(ev.endDate).getTime();
+
+      return start < evEnd && end > evStart;
+    });
+
+    if (!conflict) return null;
+
+    const venueObj = this.venues().find(v => v._id === vId);
+    const vName = venueObj ? venueObj.name : 'this venue';
+
+    return {
+      title: conflict.title,
+      venueName: vName,
+      startDate: conflict.startDate,
+      endDate: conflict.endDate
+    };
+  });
+
   // Validator: start date must be in the future
   futureDateValidator() {
     return (control: any) => {
@@ -255,9 +380,20 @@ export class EventFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Load venues
     this.venueService.getVenues().subscribe(res => {
       if (res.success && res.data) this.venues.set(res.data);
     });
+
+    // Load active campus events for real-time conflict checking
+    this.eventService.getEvents({ limit: 100 }).subscribe(res => {
+      if (res.success && res.data) this.existingEvents.set(res.data);
+    });
+
+    // Sync form values with reactive signals
+    this.eventForm.get('venue')?.valueChanges.subscribe(v => this.currentVenue.set(v || ''));
+    this.eventForm.get('startDate')?.valueChanges.subscribe(s => this.currentStartDate.set(s || ''));
+    this.eventForm.get('endDate')?.valueChanges.subscribe(e => this.currentEndDate.set(e || ''));
 
     this.eventId = this.route.snapshot.paramMap.get('id');
     if (this.eventId) {
@@ -265,20 +401,27 @@ export class EventFormComponent implements OnInit {
       this.eventService.getEventById(this.eventId).subscribe(res => {
         if (res.success && res.data) {
           const e = res.data;
+          const vId = typeof e.venue === 'object' ? e.venue._id : e.venue;
+          const sDate = new Date(e.startDate).toISOString().slice(0, 16);
+          const eDate = new Date(e.endDate).toISOString().slice(0, 16);
+
           this.eventForm.patchValue({
             title: e.title,
             description: e.description,
             category: e.category,
             capacity: e.capacity,
-            startDate: new Date(e.startDate).toISOString().slice(0, 16),
-            endDate: new Date(e.endDate).toISOString().slice(0, 16),
-            venue: typeof e.venue === 'object' ? e.venue._id : e.venue,
+            startDate: sDate,
+            endDate: eDate,
+            venue: vId,
             tagsInput: (e.tags || []).join(', '),
             budgetTotal: e.budget?.total || 0
           });
           (e.tasks || []).forEach(task => this.taskItems.push(this.fb.group({
             title: [task.title, [Validators.required, Validators.maxLength(200)]],
           })));
+          this.currentVenue.set(vId || '');
+          this.currentStartDate.set(sDate);
+          this.currentEndDate.set(eDate);
           if (e.posterUrl) this.posterPreview = e.posterUrl;
         }
       });
@@ -318,6 +461,16 @@ export class EventFormComponent implements OnInit {
 
   onSubmit(): void {
     this.eventForm.markAllAsTouched();
+
+    // Check for Venue Conflict
+    if (this.venueConflict()) {
+      const c = this.venueConflict()!;
+      this.toastService.error(
+        `Venue Conflict: "${c.title}" is already scheduled at ${c.venueName} during this time slot. Please choose another venue or time!`,
+        'Scheduling Conflict'
+      );
+      return;
+    }
 
     if (this.eventForm.invalid) {
       // Give specific error messages to guide the user
