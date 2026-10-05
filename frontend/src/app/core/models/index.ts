@@ -79,6 +79,7 @@ export interface Event {
   views: number;
   clicks: number;
   tags?: string[];
+  adminNote?: string;
   avgRating?: number;
   ratingCount?: number;
   createdAt?: string;

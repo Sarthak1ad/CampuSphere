@@ -50,12 +50,22 @@ import { Event } from '../../../core/models';
                       <i class="fa-solid fa-shapes" style="color:var(--primary);"></i>
                     </div>
                     <div class="event-cell-info">
-                      <span class="event-name-cell">{{ event.title }}</span>
+                      <div style="display:flex;align-items:center;gap:0.4rem;">
+                        <span class="event-name-cell">{{ event.title }}</span>
+                        <span *ngIf="isOngoing(event)" class="badge-live-pulse" title="Event is actively running right now!">
+                          <span class="live-dot"></span> LIVE NOW
+                        </span>
+                      </div>
                       <span class="badge badge-neutral" style="font-size:0.7rem;width:fit-content;">{{ event.category }}</span>
                     </div>
                   </div>
                 </td>
-                <td>{{ event.startDate | date:'MMM d, y' }}</td>
+                <td>
+                  <div class="date-col">
+                    <span>{{ event.startDate | date:'MMM d, y' }}</span>
+                    <small style="color:var(--text-muted);font-size:0.75rem;">{{ event.startDate | date:'shortTime' }} - {{ event.endDate | date:'shortTime' }}</small>
+                  </div>
+                </td>
                 <td>
                   <span *ngIf="getVenueName(event)">{{ getVenueName(event) }}</span>
                   <span *ngIf="!getVenueName(event)" style="color:var(--text-light);">TBD</span>
@@ -69,8 +79,8 @@ import { Event } from '../../../core/models';
                 <td><span class="badge" [ngClass]="getStatusBadge(event.status)">{{ event.status }}</span></td>
                 <td><span style="font-size:0.875rem; color:var(--text-muted);">{{ event.views }}</span></td>
                 <td>
-                  <div style="display:flex;gap:0.5rem;">
-                    <a [routerLink]="['/organizer/events', event._id, 'edit']" class="btn btn-sm btn-outline">
+                  <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <a [routerLink]="['/organizer/events', event._id, 'edit']" class="btn btn-sm btn-outline" title="Edit Event">
                       <i class="fa-solid fa-pen"></i>
                     </a>
                     <a *ngIf="isCompletedOrPast(event)" [routerLink]="['/organizer/events', event._id, 'report']" class="btn btn-sm btn-outline" title="View completed event report">
@@ -103,9 +113,46 @@ import { Event } from '../../../core/models';
     .event-thumb-ph { background:var(--primary-tint);display:flex;align-items:center;justify-content:center; }
     .event-cell-info { display:flex;flex-direction:column;gap:0.2rem; }
     .event-name-cell { font-weight:700;font-size:0.875rem; }
+    .date-col { display:flex;flex-direction:column;font-size:0.875rem; }
     .capacity-cell { display:flex;flex-direction:column;gap:0.2rem;font-size:0.875rem; }
     .mini-bar { height:3px;background:#E5E7EB;border-radius:2px;overflow:hidden;width:60px; }
     .mini-fill { height:100%;background:var(--primary); }
+    .badge-live-pulse {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #FEE2E2;
+      color: #DC2626;
+      border: 1px solid #FECACA;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 9999px;
+      letter-spacing: 0.04em;
+    }
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background: #DC2626;
+      border-radius: 50%;
+      animation: pulseLive 1.5s infinite;
+    }
+    @keyframes pulseLive {
+      0% { transform: scale(0.9); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.4; }
+      100% { transform: scale(0.9); opacity: 1; }
+    }
+    .btn-disabled-ongoing {
+      background: #F3F4F6;
+      border: 1px solid #D1D5DB;
+      color: #9CA3AF;
+      cursor: not-allowed;
+    }
+    .btn-disabled-ongoing:hover {
+      background: #FEE2E2;
+      color: #DC2626;
+      border-color: #FCA5A5;
+    }
   `]
 })
 export class OrganizerEventListComponent implements OnInit {
@@ -133,12 +180,21 @@ export class OrganizerEventListComponent implements OnInit {
         this.events.update(list => list.filter(e => e._id !== event._id));
         this.toastService.success('Event deleted.');
       },
-      error: err => this.toastService.error(err.error?.message || 'Failed to delete.')
+      error: err => {
+        this.toastService.error(err.error?.message || 'Failed to delete event.');
+      }
     });
   }
 
   isLocked(event: Event): boolean {
     return event.status === 'completed' || new Date(event.startDate).getTime() <= Date.now();
+  }
+
+  isOngoing(event: Event): boolean {
+    const now = Date.now();
+    return event.status === 'published'
+      && new Date(event.startDate).getTime() <= now
+      && new Date(event.endDate).getTime() >= now;
   }
 
   isCompletedOrPast(event: Event): boolean {

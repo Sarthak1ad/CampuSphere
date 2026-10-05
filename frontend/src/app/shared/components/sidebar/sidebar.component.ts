@@ -79,6 +79,10 @@ import { AuthService } from '../../../core/services/auth.service';
             <span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span>
             <span class="nav-text">Admin Center</span>
           </a>
+          <a routerLink="/admin/events" routerLinkActive="active" class="nav-item">
+            <span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span>
+            <span class="nav-text">All Events</span>
+          </a>
           <a routerLink="/admin/db-lab" routerLinkActive="active" class="nav-item db-lab-link">
             <span class="nav-icon"><i class="fa-solid fa-database"></i></span>
             <span class="nav-text">DB Lab (ADBMS)</span>

@@ -251,6 +251,9 @@ exports.updateEvent = asyncHandler(async (req, res) => {
 
   const allowedUpdates = ['title', 'description', 'category', 'startDate', 'endDate',
     'capacity', 'budget', 'tags', 'tasks', 'posterUrl'];
+  if (req.user.role === 'admin') {
+    allowedUpdates.push('status', 'adminNote');
+  }
   const updates = {};
   allowedUpdates.forEach(field => {
     if (req.body[field] !== undefined) updates[field] = req.body[field];
@@ -398,7 +401,7 @@ exports.archiveEvent = asyncHandler(async (req, res) => {
   if (req.user.role === 'organizer' && (
     event.status === 'completed' || new Date(event.startDate) <= new Date()
   )) {
-    throw ApiError.badRequest('Ongoing or completed events cannot be deleted');
+    throw ApiError.badRequest('Ongoing or completed events cannot be deleted by organizers');
   }
 
   // MongoDB Concept: Soft Delete via findByIdAndUpdate

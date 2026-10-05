@@ -101,6 +101,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent)
       },
       {
+        path: 'events',
+        loadComponent: () => import('./features/admin/events/admin-events.component').then(m => m.AdminEventsComponent)
+      },
+      {
         path: 'db-lab',
         loadComponent: () => import('./features/admin/db-lab/db-lab.component').then(m => m.DbLabComponent)
       },

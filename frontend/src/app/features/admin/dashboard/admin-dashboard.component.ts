@@ -18,33 +18,65 @@ import { EventService } from '../../../core/services/event.service';
           <p style="color:rgba(255,255,255,0.85);">Approve events, manage users, analyze data, and explore MongoDB internals.</p>
         </div>
         <div class="admin-quick-actions">
+          <a routerLink="/admin/events" class="quick-action-btn">
+            <i class="fa-solid fa-calendar-days fa-lg"></i>
+            <span>All Events</span>
+            <small>View & Manage</small>
+          </a>
+          <a routerLink="/admin/event-approvals" class="quick-action-btn">
+            <i class="fa-solid fa-list-check fa-lg"></i>
+            <span>Approvals</span>
+            <small>Review Pending</small>
+          </a>
+          <a routerLink="/admin/users" class="quick-action-btn">
+            <i class="fa-solid fa-users-gear fa-lg"></i>
+            <span>Users & Clubs</span>
+            <small>Verify Organizers</small>
+          </a>
           <a routerLink="/admin/db-lab" class="quick-action-btn db-lab-btn">
             <i class="fa-solid fa-database fa-lg"></i>
             <span>DB Lab</span>
             <small>ADBMS Showcase</small>
-          </a>
-          <a routerLink="/admin/event-approvals" class="quick-action-btn">
-            <i class="fa-solid fa-list-check fa-lg"></i>
-            <span>Event Approvals</span>
-            <small>Review Submissions</small>
-          </a>
-          <a routerLink="/admin/users" class="quick-action-btn">
-            <i class="fa-solid fa-users-gear fa-lg"></i>
-            <span>Manage Users</span>
-            <small>Verify Organizers</small>
           </a>
         </div>
       </div>
 
       <!-- Platform Stats -->
       <div class="stats-grid" style="margin:2rem 0;">
-        <div class="card stat-card" *ngFor="let stat of systemStats">
-          <div class="stat-icon" [style.background]="stat.bg" [style.color]="stat.color">
-            <i [class]="stat.icon"></i>
+        <a routerLink="/admin/events" class="card stat-card stat-link">
+          <div class="stat-icon" [style.background]="systemStats[0].bg" [style.color]="systemStats[0].color">
+            <i [class]="systemStats[0].icon"></i>
           </div>
           <div>
-            <div class="stat-number font-heading">{{ isLoading ? '—' : stat.value }}</div>
-            <div class="stat-label">{{ stat.label }}</div>
+            <div class="stat-number font-heading">{{ isLoading ? '—' : systemStats[0].value }}</div>
+            <div class="stat-label">{{ systemStats[0].label }} <i class="fa-solid fa-arrow-right" style="font-size:0.7rem;margin-left:4px;"></i></div>
+          </div>
+        </a>
+        <a routerLink="/admin/users" class="card stat-card stat-link">
+          <div class="stat-icon" [style.background]="systemStats[1].bg" [style.color]="systemStats[1].color">
+            <i [class]="systemStats[1].icon"></i>
+          </div>
+          <div>
+            <div class="stat-number font-heading">{{ isLoading ? '—' : systemStats[1].value }}</div>
+            <div class="stat-label">{{ systemStats[1].label }}</div>
+          </div>
+        </a>
+        <a routerLink="/admin/users" class="card stat-card stat-link">
+          <div class="stat-icon" [style.background]="systemStats[2].bg" [style.color]="systemStats[2].color">
+            <i [class]="systemStats[2].icon"></i>
+          </div>
+          <div>
+            <div class="stat-number font-heading">{{ isLoading ? '—' : systemStats[2].value }}</div>
+            <div class="stat-label">{{ systemStats[2].label }}</div>
+          </div>
+        </a>
+        <div class="card stat-card">
+          <div class="stat-icon" [style.background]="systemStats[3].bg" [style.color]="systemStats[3].color">
+            <i [class]="systemStats[3].icon"></i>
+          </div>
+          <div>
+            <div class="stat-number font-heading">{{ isLoading ? '—' : systemStats[3].value }}</div>
+            <div class="stat-label">{{ systemStats[3].label }}</div>
           </div>
         </div>
       </div>
@@ -63,19 +95,11 @@ import { EventService } from '../../../core/services/event.service';
 
       <!-- Module Grid -->
       <div class="module-grid">
-        <a routerLink="/admin/db-lab" class="module-card card card-hover db-module">
-          <div class="module-icon"><i class="fa-solid fa-database"></i></div>
+        <a routerLink="/admin/events" class="module-card card card-hover">
+          <div class="module-icon" style="background:#FFF1EA;color:#E05A1A;"><i class="fa-solid fa-calendar-days"></i></div>
           <div class="module-body">
-            <h4>DB Lab (ADBMS)</h4>
-            <p>Live explain plans, index benchmarks, aggregation pipeline runner, and concurrency simulation.</p>
-            <span class="module-tag">PRO FEATURE</span>
-          </div>
-        </a>
-        <a routerLink="/admin/analytics" class="module-card card card-hover">
-          <div class="module-icon"><i class="fa-solid fa-chart-column"></i></div>
-          <div class="module-body">
-            <h4>Aggregated Reports</h4>
-            <p>Multi-stage MongoDB aggregation pipelines for attendance, revenue, and student engagement.</p>
+            <h4>All Campus Events</h4>
+            <p>Comprehensive directory of all live, upcoming, completed, draft, and archived events.</p>
           </div>
         </a>
         <a routerLink="/admin/event-approvals" class="module-card card card-hover">
@@ -97,6 +121,21 @@ import { EventService } from '../../../core/services/event.service';
           <div class="module-body">
             <h4>Campus Venues</h4>
             <p>Manage venue data including GeoJSON coordinates for 2dsphere spatial queries.</p>
+          </div>
+        </a>
+        <a routerLink="/admin/analytics" class="module-card card card-hover">
+          <div class="module-icon"><i class="fa-solid fa-chart-column"></i></div>
+          <div class="module-body">
+            <h4>Aggregated Reports</h4>
+            <p>Multi-stage MongoDB aggregation pipelines for attendance, revenue, and student engagement.</p>
+          </div>
+        </a>
+        <a routerLink="/admin/db-lab" class="module-card card card-hover db-module">
+          <div class="module-icon"><i class="fa-solid fa-database"></i></div>
+          <div class="module-body">
+            <h4>DB Lab (ADBMS)</h4>
+            <p>Live explain plans, index benchmarks, aggregation pipeline runner, and concurrency simulation.</p>
+            <span class="module-tag">PRO FEATURE</span>
           </div>
         </a>
         <a routerLink="/admin/platform-feedbacks" class="module-card card card-hover">
@@ -126,6 +165,8 @@ import { EventService } from '../../../core/services/event.service';
     .stats-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:1rem; }
     @media (max-width:900px) { .stats-grid { grid-template-columns:repeat(2,1fr); } }
     .stat-card { display:flex;align-items:center;gap:1rem;padding:1.25rem; }
+    .stat-link { text-decoration: none; color: inherit; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .stat-link:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
     .stat-icon { width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0; }
     .stat-number { font-size:1.85rem;font-weight:800;line-height:1; }
     .stat-label { font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem; }
