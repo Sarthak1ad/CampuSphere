@@ -182,6 +182,8 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   res.json({ success: true, data: user, message: 'Profile updated successfully' });
 });
 
+const { sendEmail, emailTemplates } = require('../services/emailService');
+
 // ── CHANGE PASSWORD ───────────────────────────────────────────────────────────
 exports.changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
@@ -207,4 +209,130 @@ exports.changePassword = asyncHandler(async (req, res) => {
   });
 
   res.json({ success: true, message: 'Password changed successfully' });
+});
+
+// ── FORGOT PASSWORD (OTP GENERATION & EMAIL) ──────────────────────────────────
+exports.forgotPassword = asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw ApiError.badRequest('Validation failed', errors.array());
+  }
+
+  const { email } = req.body;
+  const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+  if (!user) {
+    return res.json({
+      success: true,
+      message: 'If an account exists with this email, a 6-digit OTP code has been sent.',
+    });
+  }
+
+  // Generate 6-digit numeric OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  user.passwordResetOtp = otp;
+  user.passwordResetExpires = otpExpires;
+  await user.save();
+
+  // Send verification email
+  const emailData = emailTemplates.passwordResetOtp({
+    name: user.name,
+    otp,
+  });
+
+  await sendEmail({
+    to: user.email,
+    subject: emailData.subject,
+    html: emailData.html,
+  });
+
+  await auditLog({
+    actor: user,
+    action: 'user.forgotPassword',
+    entity: 'User',
+    entityId: user._id,
+    ipAddress: req.ip,
+  });
+
+  res.json({
+    success: true,
+    message: 'A 6-digit verification code (OTP) has been sent to your email.',
+    ...(process.env.NODE_ENV !== 'production' && { devOtp: otp }),
+  });
+});
+
+// ── VERIFY OTP ────────────────────────────────────────────────────────────────
+exports.verifyOtp = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    throw ApiError.badRequest('Email and 6-digit OTP are required');
+  }
+
+  const user = await User.findOne({
+    email: email.toLowerCase().trim(),
+    passwordResetOtp: otp.toString().trim(),
+    passwordResetExpires: { $gt: new Date() },
+  }).select('+passwordResetOtp +passwordResetExpires');
+
+  if (!user) {
+    throw ApiError.badRequest('Invalid or expired verification code');
+  }
+
+  res.json({
+    success: true,
+    message: 'Code verified successfully. Please enter your new password.',
+  });
+});
+
+// ── RESET PASSWORD WITH OTP ───────────────────────────────────────────────────
+exports.resetPassword = asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw ApiError.badRequest('Validation failed', errors.array());
+  }
+
+  const { email, otp, newPassword } = req.body;
+
+  const user = await User.findOne({
+    email: email.toLowerCase().trim(),
+    passwordResetOtp: otp.toString().trim(),
+    passwordResetExpires: { $gt: new Date() },
+  }).select('+passwordResetOtp +passwordResetExpires +passwordHash');
+
+  if (!user) {
+    throw ApiError.badRequest('Invalid or expired verification code');
+  }
+
+  // Pre-save hook will hash the new password
+  user.passwordHash = newPassword;
+  user.passwordResetOtp = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+
+  // Send confirmation email
+  const emailData = emailTemplates.passwordResetSuccess({
+    name: user.name,
+  });
+
+  await sendEmail({
+    to: user.email,
+    subject: emailData.subject,
+    html: emailData.html,
+  });
+
+  await auditLog({
+    actor: user,
+    action: 'user.resetPassword',
+    entity: 'User',
+    entityId: user._id,
+    ipAddress: req.ip,
+    level: 'warning',
+  });
+
+  res.json({
+    success: true,
+    message: 'Your password has been successfully reset! You can now log in.',
+  });
 });

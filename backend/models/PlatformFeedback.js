@@ -23,7 +23,7 @@ const platformFeedbackSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Title is required'],
     trim: true,
-    minlength: [5, 'Title must be at least 5 characters'],
+    minlength: [2, 'Title must be at least 2 characters'],
     maxlength: [200, 'Title cannot exceed 200 characters'],
   },
 
@@ -31,7 +31,7 @@ const platformFeedbackSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Description is required'],
     trim: true,
-    minlength: [20, 'Description must be at least 20 characters'],
+    minlength: [2, 'Description must be at least 2 characters'],
     maxlength: [5000, 'Description cannot exceed 5000 characters'],
   },
 

@@ -13,8 +13,10 @@ const feedbackValidation = [
 ];
 
 router.get('/my', protect, authorize('student'), ctrl.getMyFeedback);
+router.post('/', protect, authorize('student'), feedbackValidation, ctrl.submitFeedback);
 router.post('/events/:eventId', protect, authorize('student'), feedbackValidation, ctrl.submitFeedback);
 router.get('/events/:eventId', ctrl.getEventFeedback);
+router.post('/:feedbackId/reply', protect, authorize('admin', 'organizer'), ctrl.replyToFeedback);
 router.patch('/:feedbackId/reply', protect, authorize('admin', 'organizer'), ctrl.replyToFeedback);
 
 module.exports = router;

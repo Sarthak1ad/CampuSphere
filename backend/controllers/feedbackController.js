@@ -13,7 +13,8 @@ exports.submitFeedback = asyncHandler(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) throw ApiError.badRequest('Validation failed', errors.array());
 
-  const { eventId } = req.params;
+  const eventId = req.params.eventId || req.body.event || req.body.eventId;
+  if (!eventId) throw ApiError.badRequest('Event ID is required');
   const studentId = req.user._id;
 
   // Verify student actually attended (checked-in status)
@@ -25,6 +26,12 @@ exports.submitFeedback = asyncHandler(async (req, res) => {
 
   if (!registration) {
     throw ApiError.forbidden('You can only submit feedback for events you attended (checked-in)');
+  }
+
+  // Check if feedback already submitted
+  const existing = await Feedback.findOne({ event: eventId, student: studentId });
+  if (existing) {
+    throw ApiError.conflict('You have already submitted feedback for this event');
   }
 
   const { rating, answers, comment } = req.body;
@@ -40,13 +47,17 @@ exports.submitFeedback = asyncHandler(async (req, res) => {
 
   // Update event's aggregate rating using MongoDB $inc and manual calculation
   const event = await Event.findById(eventId);
-  const newCount = event.ratingCount + 1;
-  const newAvg = ((event.avgRating * event.ratingCount) + parseInt(rating)) / newCount;
+  if (event) {
+    const currentCount = event.ratingCount || 0;
+    const currentAvg = event.avgRating || 0;
+    const newCount = currentCount + 1;
+    const newAvg = ((currentAvg * currentCount) + parseInt(rating)) / newCount;
 
-  await Event.updateOne(
-    { _id: eventId },
-    { $set: { avgRating: parseFloat(newAvg.toFixed(2)), ratingCount: newCount } }
-  );
+    await Event.updateOne(
+      { _id: eventId },
+      { $set: { avgRating: parseFloat(newAvg.toFixed(2)), ratingCount: newCount } }
+    );
+  }
 
   res.status(201).json({ success: true, data: feedback, message: 'Feedback submitted successfully' });
 });
@@ -83,7 +94,10 @@ exports.replyToFeedback = asyncHandler(async (req, res) => {
     }
   }
 
-  feedback.organizerReply = { content: req.body.content, repliedAt: new Date() };
+  const replyContent = req.body.content || req.body.reply;
+  if (!replyContent) throw ApiError.badRequest('Reply content is required');
+
+  feedback.organizerReply = { content: replyContent, repliedAt: new Date() };
   await feedback.save();
 
   res.json({ success: true, data: feedback, message: 'Reply submitted' });

@@ -171,9 +171,28 @@ export class StudentFeedbackComponent implements OnInit {
           const attended = res.data.filter(r => r.status === 'checked-in');
           this.attendedEvents.set(attended);
           attended.forEach(r => this.initForm(r._id));
+          this.loadExistingFeedback();
         }
       },
       error: () => { this.isLoading = false; }
+    });
+  }
+
+  loadExistingFeedback(): void {
+    this.feedbackService.getMyFeedback().subscribe({
+      next: res => {
+        if (res.success && res.data) {
+          const submittedEventIds = new Set(
+            res.data.map(f => typeof f.event === 'object' ? (f.event as any)._id : f.event)
+          );
+          this.attendedEvents().forEach(r => {
+            const evId = typeof r.event === 'object' ? (r.event as Event)._id : r.event;
+            if (submittedEventIds.has(evId)) {
+              this.submittedIds.add(r._id);
+            }
+          });
+        }
+      }
     });
   }
 

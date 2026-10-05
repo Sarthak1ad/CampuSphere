@@ -41,7 +41,8 @@ const errorHandler = (err, req, res, next) => {
   // If any validator fails, Mongoose throws ValidationError with details
   // about WHICH field failed and WHY.
   else if (err.name === 'ValidationError') {
-    message = 'Validation failed';
+    const errorDetails = Object.values(err.errors).map((e) => e.message).join(', ');
+    message = errorDetails ? `Validation failed: ${errorDetails}` : 'Validation failed';
     statusCode = 400;
     errors = Object.values(err.errors).map((e) => ({
       field: e.path,

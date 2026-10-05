@@ -93,6 +93,7 @@ const userSchema = new mongoose.Schema({
   emailVerified: { type: Boolean, default: false },
   emailVerificationToken: { type: String, select: false },
   passwordResetToken: { type: String, select: false },
+  passwordResetOtp: { type: String, select: false },
   passwordResetExpires: { type: Date, select: false },
   lastLogin: { type: Date },
   avatar: { type: String }, // URL to uploaded avatar

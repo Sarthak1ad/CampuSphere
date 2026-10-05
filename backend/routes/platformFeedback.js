@@ -50,8 +50,8 @@ router.post('/',
   processImage('screenshot', 'screenshots', 1920, 1080, 70),
   [
     body('type').isIn(['suggestion', 'bug']),
-    body('title').trim().isLength({ min: 5, max: 200 }),
-    body('description').trim().isLength({ min: 10, max: 5000 }),
+    body('title').trim().isLength({ min: 2, max: 200 }).withMessage('Title must be at least 2 characters'),
+    body('description').trim().isLength({ min: 2, max: 5000 }).withMessage('Description must be at least 2 characters'),
   ],
   asyncHandler(async (req, res) => {
     const errors = validationResult(req);

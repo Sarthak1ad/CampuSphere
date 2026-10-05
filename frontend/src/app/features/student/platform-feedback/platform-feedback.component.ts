@@ -16,11 +16,15 @@ import { ToastService } from '../../../core/services/toast.service';
       </div>
 
       <div class="card" style="max-width:640px;">
-        <div *ngIf="submitted" class="alert alert-success">
-          <i class="fa-solid fa-circle-check fa-lg"></i>
+        <div *ngIf="submitted" class="success-box">
+          <i class="fa-solid fa-circle-check fa-2x" style="color:var(--success);"></i>
           <div>
-            <strong>Thank you!</strong> Your feedback has been submitted and is visible to the admin team.
+            <h3 style="margin:0 0 0.25rem 0;">Thank you for your feedback!</h3>
+            <p style="margin:0; color:var(--text-muted); font-size:0.9rem;">Your feedback has been submitted successfully and is visible to the admin team.</p>
           </div>
+          <button type="button" class="btn btn-secondary" style="margin-top:1rem;" (click)="resetForm()">
+            <i class="fa-solid fa-plus"></i> Submit Another Feedback
+          </button>
         </div>
 
         <form *ngIf="!submitted" [formGroup]="feedbackForm" (ngSubmit)="onSubmit()">
@@ -38,18 +42,20 @@ import { ToastService } from '../../../core/services/toast.service';
           </div>
 
           <div class="form-group">
-            <label class="form-label">Title (Short Summary)</label>
-            <input type="text" class="form-control" formControlName="title" placeholder="e.g. QR code not loading on iOS Safari" />
+            <label class="form-label">Title (Short Summary) <span style="color:var(--danger);">*</span></label>
+            <input type="text" class="form-control" formControlName="title" placeholder="e.g. Management Issue or QR code error" />
             <div class="form-error" *ngIf="f['title'].touched && f['title'].errors?.['required']">Title is required</div>
+            <div class="form-error" *ngIf="f['title'].touched && f['title'].errors?.['minlength']">Title must be at least 2 characters</div>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Description (Steps to Reproduce / Details)</label>
-            <textarea class="form-control" formControlName="description" rows="5" placeholder="Please be as detailed as possible. Include browser, device, and steps to reproduce (for bugs)."></textarea>
+            <label class="form-label">Description (Details / Notes) <span style="color:var(--danger);">*</span></label>
+            <textarea class="form-control" formControlName="description" rows="5" placeholder="Please describe the issue or suggestion in detail..."></textarea>
             <div class="form-error" *ngIf="f['description'].touched && f['description'].errors?.['required']">Description is required</div>
+            <div class="form-error" *ngIf="f['description'].touched && f['description'].errors?.['minlength']">Description must be at least 2 characters</div>
           </div>
 
-          <button type="submit" class="btn btn-primary" [disabled]="feedbackForm.invalid || isSubmitting">
+          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
             <span *ngIf="isSubmitting"><i class="fa-solid fa-spinner fa-spin"></i> Submitting...</span>
             <span *ngIf="!isSubmitting"><i class="fa-solid fa-paper-plane"></i> Send Feedback</span>
           </button>
@@ -79,6 +85,19 @@ import { ToastService } from '../../../core/services/toast.service';
       background: var(--primary-tint);
       color: var(--primary);
     }
+    .form-error {
+      color: var(--danger, #EF4444);
+      font-size: 0.8rem;
+      margin-top: 0.35rem;
+    }
+    .success-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.75rem;
+      padding: 2rem 1rem;
+    }
   `]
 })
 export class PlatformFeedbackComponent {
@@ -91,23 +110,38 @@ export class PlatformFeedbackComponent {
 
   feedbackForm: FormGroup = this.fb.group({
     type: ['bug'],
-    title: ['', Validators.required],
-    description: ['', [Validators.required, Validators.minLength(10)]]
+    title: ['', [Validators.required, Validators.minLength(2)]],
+    description: ['', [Validators.required, Validators.minLength(2)]]
   });
 
   get f() { return this.feedbackForm.controls; }
 
+  resetForm(): void {
+    this.submitted = false;
+    this.feedbackForm.reset({ type: 'bug', title: '', description: '' });
+  }
+
   onSubmit(): void {
-    if (this.feedbackForm.invalid) return;
+    if (this.feedbackForm.invalid) {
+      this.feedbackForm.markAllAsTouched();
+      this.toastService.warning('Please fill in all required fields (minimum 2 characters).');
+      return;
+    }
     this.isSubmitting = true;
     this.feedbackService.submitPlatformFeedback(this.feedbackForm.value).subscribe({
       next: () => {
         this.isSubmitting = false;
         this.submitted = true;
+        this.toastService.success('Thank you! Your feedback has been submitted to the admin team.', 'Feedback Sent');
       },
       error: err => {
         this.isSubmitting = false;
-        this.toastService.error(err.error?.message || 'Failed to submit.');
+        let msg = err.error?.message || 'Failed to submit feedback.';
+        if (err.error?.errors && Array.isArray(err.error.errors) && err.error.errors.length > 0) {
+          const fieldMsgs = err.error.errors.map((e: any) => e.message || e.msg).filter(Boolean).join(', ');
+          if (fieldMsgs) msg = `${msg}: ${fieldMsgs}`;
+        }
+        this.toastService.error(msg);
       }
     });
   }

@@ -92,6 +92,7 @@ import { ToastService } from '../../../core/services/toast.service';
             <div class="form-group">
               <div class="form-label-row">
                 <label class="form-label">Password</label>
+                <a routerLink="/auth/forgot-password" class="forgot-link">Forgot password?</a>
               </div>
               <input 
                 type="password" 
@@ -323,6 +324,25 @@ import { ToastService } from '../../../core/services/toast.service';
     }
     .form-group {
       margin-bottom: 1.35rem;
+    }
+    .form-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .form-label-row .form-label {
+      margin-bottom: 0;
+    }
+    .forgot-link {
+      font-size: 0.85rem;
+      color: var(--primary, #E05A1A);
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+    .forgot-link:hover {
+      text-decoration: underline;
     }
     .form-group .form-label {
       font-size: 0.95rem;

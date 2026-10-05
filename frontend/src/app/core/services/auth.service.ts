@@ -56,6 +56,18 @@ export class AuthService {
     );
   }
 
+  forgotPassword(email: string): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/forgot-password`, { email });
+  }
+
+  verifyOtp(email: string, otp: string): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/verify-otp`, { email, otp });
+  }
+
+  resetPassword(data: { email: string; otp: string; newPassword: string }): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/reset-password`, data);
+  }
+
   private setSession(token: string, user: User): void {
     this.token.set(token);
     this.currentUser.set(user);

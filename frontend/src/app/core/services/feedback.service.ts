@@ -26,6 +26,10 @@ export class FeedbackService {
     return this.http.post<ApiResponse<Feedback>>(`${this.apiUrl}/${feedbackId}/reply`, { reply });
   }
 
+  getMyFeedback(): Observable<ApiResponse<Feedback[]>> {
+    return this.http.get<ApiResponse<Feedback[]>>(`${this.apiUrl}/my`);
+  }
+
   // Platform bug reports & suggestions
   submitPlatformFeedback(feedbackData: any): Observable<ApiResponse<PlatformFeedback>> {
     return this.http.post<ApiResponse<PlatformFeedback>>(this.platformUrl, feedbackData);
