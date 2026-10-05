@@ -33,7 +33,7 @@ export class RegistrationService {
   }
 
   checkIn(eventId: string, qrToken?: string, studentId?: string): Observable<ApiResponse<Registration>> {
-    return this.http.post<ApiResponse<Registration>>(`${this.apiUrl}/events/${eventId}/check-in`, {
+    return this.http.post<ApiResponse<Registration>>(`${this.apiUrl}/check-in`, {
       qrToken,
       studentId
     });
