@@ -154,12 +154,34 @@ exports.createEvent = asyncHandler(async (req, res) => {
   }
 
   // Validate venue exists and has sufficient capacity
-  const venue = await Venue.findById(venueId);
-  if (!venue || venue.isArchived) throw ApiError.notFound('Venue not found');
-  if (parseInt(capacity) > venue.capacity) {
-    throw ApiError.badRequest(
-      `Event capacity (${capacity}) cannot exceed venue capacity (${venue.capacity})`
-    );
+  if (venueId) {
+    const venue = await Venue.findById(venueId);
+    if (!venue || venue.isArchived) throw ApiError.notFound('Venue not found');
+    if (parseInt(capacity) > venue.capacity) {
+      throw ApiError.badRequest(
+        `Event capacity (${capacity}) cannot exceed venue capacity (${venue.capacity})`
+      );
+    }
+
+    // Check for scheduling / venue overlap conflict
+    const parsedStart = new Date(startDate);
+    const parsedEnd = new Date(endDate);
+
+    const conflictingEvent = await Event.findOne({
+      venue: venueId,
+      status: { $in: ['published', 'pending', 'ongoing'] },
+      startDate: { $lt: parsedEnd },
+      endDate: { $gt: parsedStart }
+    }).populate('venue', 'name');
+
+    if (conflictingEvent) {
+      const venueName = conflictingEvent.venue?.name || 'the selected venue';
+      const sStr = new Date(conflictingEvent.startDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+      const eStr = new Date(conflictingEvent.endDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+      throw ApiError.badRequest(
+        `⚠️ Venue Conflict: "${conflictingEvent.title}" is already scheduled/ongoing at "${venueName}" from ${sStr} to ${eStr}. Please select a different venue or change your event date/time.`
+      );
+    }
   }
 
   // Parse budget and tags if received as strings (from multipart FormData)
@@ -198,7 +220,7 @@ exports.createEvent = asyncHandler(async (req, res) => {
     description,
     category,
     organizer: req.user._id,
-    venue: venueId,
+    venue: venueId || null,
     startDate: new Date(startDate),
     endDate: new Date(endDate),
     capacity: parseInt(capacity),
@@ -237,7 +259,7 @@ exports.updateEvent = asyncHandler(async (req, res) => {
     throw ApiError.badRequest('Cannot edit a completed, cancelled, or archived event');
   }
 
-  const allowedUpdates = ['title', 'description', 'category', 'startDate', 'endDate',
+  const allowedUpdates = ['title', 'description', 'category', 'venueId', 'venue', 'startDate', 'endDate',
     'capacity', 'budget', 'tags', 'posterUrl'];
   if (req.user.role === 'admin') {
     allowedUpdates.push('status', 'adminNote');
@@ -246,6 +268,35 @@ exports.updateEvent = asyncHandler(async (req, res) => {
   allowedUpdates.forEach(field => {
     if (req.body[field] !== undefined) updates[field] = req.body[field];
   });
+
+  if (updates.venueId) {
+    updates.venue = updates.venueId;
+    delete updates.venueId;
+  }
+
+  // Check venue conflict on update
+  const checkVenue = updates.venue || event.venue;
+  const checkStart = updates.startDate ? new Date(updates.startDate) : event.startDate;
+  const checkEnd = updates.endDate ? new Date(updates.endDate) : event.endDate;
+
+  if (checkVenue) {
+    const conflictingEvent = await Event.findOne({
+      _id: { $ne: event._id },
+      venue: checkVenue,
+      status: { $in: ['published', 'pending', 'ongoing'] },
+      startDate: { $lt: checkEnd },
+      endDate: { $gt: checkStart }
+    }).populate('venue', 'name');
+
+    if (conflictingEvent) {
+      const venueName = conflictingEvent.venue?.name || 'the selected venue';
+      const sStr = new Date(conflictingEvent.startDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+      const eStr = new Date(conflictingEvent.endDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+      throw ApiError.badRequest(
+        `⚠️ Venue Conflict: "${conflictingEvent.title}" is already scheduled/ongoing at "${venueName}" from ${sStr} to ${eStr}. Please select a different venue or change your event date/time.`
+      );
+    }
+  }
 
   if (typeof updates.budget === 'string') {
     try {
