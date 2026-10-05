@@ -164,8 +164,10 @@ import { Event, Registration } from '../../../core/models';
                 <button
                   class="btn btn-primary btn-block"
                   *ngIf="reg.status === 'registered'"
-                  (click)="showQrModal = true">
-                  <i class="fa-solid fa-qrcode"></i> View QR Pass
+                  (click)="openQrModal()"
+                  [disabled]="isLoadingQr">
+                  <span *ngIf="isLoadingQr"><i class="fa-solid fa-spinner fa-spin"></i> Loading pass...</span>
+                  <span *ngIf="!isLoadingQr"><i class="fa-solid fa-qrcode"></i> View QR Pass</span>
                 </button>
 
                 <button
@@ -381,6 +383,7 @@ export class EventDetailComponent implements OnInit {
   isRegistering = false;
   isCancelling = false;
   showQrModal = false;
+  isLoadingQr = false;
 
   get isFull(): boolean {
     const e = this.event();
@@ -472,6 +475,33 @@ export class EventDetailComponent implements OnInit {
         this.isCancelling = false;
         this.toastService.error(err.error?.message || 'Could not cancel registration.');
       }
+    });
+  }
+
+  openQrModal(): void {
+    const eventId = this.event()?._id;
+    if (!eventId) return;
+
+    // Show modal immediately (spinner shows if token not yet loaded)
+    this.showQrModal = true;
+    this.isLoadingQr = true;
+
+    this.registrationService.getQrPass(eventId).subscribe({
+      next: res => {
+        this.isLoadingQr = false;
+        if (res.success && res.data) {
+          const current = this.myRegistration();
+          if (current) {
+            this.myRegistration.set({
+              ...current,
+              qrToken: res.data.qrToken,
+              qrDataUrl: res.data.qrDataUrl || res.data.qrCodeDataUrl,
+              qrCodeDataUrl: res.data.qrCodeDataUrl,
+            });
+          }
+        }
+      },
+      error: () => { this.isLoadingQr = false; }
     });
   }
 

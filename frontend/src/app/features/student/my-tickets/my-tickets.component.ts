@@ -180,6 +180,7 @@ export class MyTicketsComponent implements OnInit {
   activeTab = 'all';
   cancellingId: string | null = null;
   selectedReg: Registration | null = null;
+  isLoadingQr = false;
 
   tabs = [
     { key: 'all', label: 'All' },
@@ -223,7 +224,30 @@ export class MyTicketsComponent implements OnInit {
   }
 
   openQr(reg: Registration): void {
-    this.selectedReg = reg;
+    const eventObj = this.getEvent(reg);
+    const eventId = eventObj?._id || (typeof reg.event === 'string' ? reg.event : null);
+
+    // Show modal immediately with what we have (may already have qrToken)
+    this.selectedReg = { ...reg };
+
+    if (!eventId) return;
+
+    // Always fetch fresh QR pass to ensure token is populated
+    this.isLoadingQr = true;
+    this.registrationService.getQrPass(eventId).subscribe({
+      next: res => {
+        this.isLoadingQr = false;
+        if (res.success && res.data) {
+          this.selectedReg = {
+            ...this.selectedReg!,
+            qrToken: res.data.qrToken,
+            qrDataUrl: res.data.qrDataUrl || res.data.qrCodeDataUrl,
+            qrCodeDataUrl: res.data.qrCodeDataUrl,
+          };
+        }
+      },
+      error: () => { this.isLoadingQr = false; }
+    });
   }
 
   cancelRegistration(regId: string): void {

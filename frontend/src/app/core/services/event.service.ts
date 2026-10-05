@@ -39,7 +39,9 @@ export class EventService {
   }
 
   updateStatus(id: string, status: string, rejectionReason?: string): Observable<ApiResponse<Event>> {
-    return this.http.patch<ApiResponse<Event>>(`${this.apiUrl}/${id}/status`, { status, rejectionReason });
+    // Backend: PATCH /:id/review expects { action: 'approve'|'reject', note?: string }
+    const action = status === 'published' ? 'approve' : 'reject';
+    return this.http.patch<ApiResponse<Event>>(`${this.apiUrl}/${id}/review`, { action, note: rejectionReason });
   }
 
   deleteEvent(id: string): Observable<ApiResponse<void>> {

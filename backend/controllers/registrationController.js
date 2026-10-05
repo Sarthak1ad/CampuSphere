@@ -353,21 +353,31 @@ exports.getMyRegistrations = asyncHandler(async (req, res) => {
     .skip((parseInt(page) - 1) * parseInt(limit))
     .limit(parseInt(limit));
 
-  // Ensure QR Code Data URL is populated for all registered tickets
+  // Ensure every registered ticket has a qrToken and QR image
   const registrations = await Promise.all(
     rawRegistrations.map(async (doc) => {
       const obj = doc.toObject();
+
+      // ── Step 1: Generate qrToken if missing (handles old documents) ──
+      if (!obj.qrToken && obj.status === 'registered') {
+        const newToken = require('crypto').randomUUID();
+        // Save the new token back to the DB so it's stable
+        await Registration.updateOne({ _id: doc._id }, { $set: { qrToken: newToken } });
+        obj.qrToken = newToken;
+      }
+
+      // ── Step 2: Generate QR image if missing ──
       if (!obj.qrCodeDataUrl && obj.qrToken && obj.status === 'registered') {
         try {
           obj.qrCodeDataUrl = await QRCode.toDataURL(obj.qrToken, { width: 300, margin: 2, errorCorrectionLevel: 'H' });
-        } catch (e) {
-          // ignore error
-        }
+        } catch (e) { /* ignore */ }
       }
+
       obj.qrDataUrl = obj.qrCodeDataUrl;
       return obj;
     })
   );
+
 
   res.json({
     success: true,

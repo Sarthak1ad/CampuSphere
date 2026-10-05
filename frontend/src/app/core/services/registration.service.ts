@@ -28,6 +28,10 @@ export class RegistrationService {
     return this.http.get<ApiResponse<Registration[]>>(`${this.apiUrl}/events/${eventId}/attendees`);
   }
 
+  getQrPass(eventId: string): Observable<ApiResponse<{ qrToken: string; qrCodeDataUrl: string; qrDataUrl: string }>> {
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/events/${eventId}/qr`);
+  }
+
   checkIn(eventId: string, qrToken?: string, studentId?: string): Observable<ApiResponse<Registration>> {
     return this.http.post<ApiResponse<Registration>>(`${this.apiUrl}/events/${eventId}/check-in`, {
       qrToken,

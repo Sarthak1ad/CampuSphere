@@ -12,7 +12,7 @@ const eventValidation = [
   body('title').trim().isLength({ min: 2, max: 200 }).withMessage('Title must be 2-200 characters'),
   body('description').isLength({ min: 50 }).withMessage('Description must be at least 50 characters'),
   body('category').isIn(['Academic', 'Cultural', 'Sports', 'Social', 'Workshop', 'Seminar']),
-  body('venueId').isMongoId().withMessage('Valid venue ID required'),
+  body('venueId').optional({ checkFalsy: true }).isMongoId().withMessage('Valid venue ID required'),
   body('startDate').isISO8601().withMessage('Valid start date required'),
   body('endDate').isISO8601().withMessage('Valid end date required'),
   body('capacity').isInt({ min: 1 }).withMessage('Capacity must be a positive integer'),

@@ -39,10 +39,11 @@ import { Venue, EventCategory } from '../../../core/models';
               </div>
 
               <div class="form-group">
-                <label class="form-label">Description *</label>
-                <textarea class="form-control" formControlName="description" rows="5" placeholder="Describe the event in detail..."
+                <label class="form-label">Description * <span class="char-hint" [class.char-ok]="descLen >= 50" [class.char-warn]="descLen < 50">({{ descLen }}/50 min)</span></label>
+                <textarea class="form-control" formControlName="description" rows="5" placeholder="Describe the event in at least 50 characters (markdown like **bold** supported)..."
                   [class.is-invalid]="f['description'].touched && f['description'].invalid"></textarea>
-                <div class="form-error" *ngIf="f['description'].touched && f['description'].errors?.['minlength']">Min 20 characters</div>
+                <div class="form-error" *ngIf="f['description'].touched && f['description'].errors?.['required']">Description is required</div>
+                <div class="form-error" *ngIf="f['description'].touched && f['description'].errors?.['minlength']">Description must be at least 50 characters (currently {{ descLen }})</div>
               </div>
 
               <div class="two-col">
@@ -64,11 +65,15 @@ import { Venue, EventCategory } from '../../../core/models';
                   <label class="form-label">Start Date & Time *</label>
                   <input type="datetime-local" class="form-control" formControlName="startDate"
                     [class.is-invalid]="f['startDate'].touched && f['startDate'].invalid" />
+                  <div class="form-error" *ngIf="f['startDate'].touched && f['startDate'].errors?.['required']">Start date is required</div>
+                  <div class="form-error" *ngIf="f['startDate'].touched && f['startDate'].errors?.['pastDate']">⚠️ Start date must be in the future</div>
                 </div>
                 <div class="form-group">
                   <label class="form-label">End Date & Time *</label>
                   <input type="datetime-local" class="form-control" formControlName="endDate"
                     [class.is-invalid]="f['endDate'].touched && f['endDate'].invalid" />
+                  <div class="form-error" *ngIf="f['endDate'].touched && f['endDate'].errors?.['required']">End date is required</div>
+                  <div class="form-error" *ngIf="eventForm.errors?.['endBeforeStart']">⚠️ End date must be at least 1 hour after start date</div>
                 </div>
               </div>
 
@@ -172,6 +177,9 @@ import { Venue, EventCategory } from '../../../core/models';
     .poster-upload-zone:hover { border-color:var(--primary);background:var(--primary-tint); }
     .poster-preview { max-width:100%;max-height:250px;border-radius:var(--radius-sm);object-fit:cover; }
     .upload-placeholder { display:flex;flex-direction:column;align-items:center;gap:0.5rem;color:var(--text-muted); }
+    .char-hint { font-size:0.75rem; font-weight:600; margin-left:0.4rem; }
+    .char-warn { color: #DC2626; }
+    .char-ok { color: #16A34A; }
   `]
 })
 export class EventFormComponent implements OnInit {
@@ -192,20 +200,41 @@ export class EventFormComponent implements OnInit {
   categories: EventCategory[] = ['Academic', 'Cultural', 'Sports', 'Social', 'Workshop', 'Seminar'];
 
   eventForm: FormGroup = this.fb.group({
-    title: ['', [Validators.required, Validators.minLength(3)]],
-    description: ['', [Validators.required, Validators.minLength(20)]],
+    title: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]],
+    description: ['', [Validators.required, Validators.minLength(50), Validators.maxLength(10000)]],
     category: ['', Validators.required],
     capacity: [100, [Validators.required, Validators.min(1)]],
-    startDate: ['', Validators.required],
+    startDate: ['', [Validators.required, this.futureDateValidator()]],
     endDate: ['', Validators.required],
     venue: [''],
     tagsInput: [''],
     budgetTotal: [0],
     budgetBreakdown: this.fb.array([])
-  });
+  }, { validators: this.dateRangeValidator() });
 
   get f() { return this.eventForm.controls; }
   get budgetItems(): FormArray { return this.eventForm.get('budgetBreakdown') as FormArray; }
+  get descLen(): number { return (this.f['description'].value || '').length; }
+
+  // Validator: start date must be in the future
+  futureDateValidator() {
+    return (control: any) => {
+      if (!control.value) return null;
+      const selected = new Date(control.value);
+      return selected > new Date() ? null : { pastDate: true };
+    };
+  }
+
+  // Cross-field validator: end must be >= start + 1 hour
+  dateRangeValidator() {
+    return (group: any) => {
+      const start = group.get('startDate')?.value;
+      const end = group.get('endDate')?.value;
+      if (!start || !end) return null;
+      const diffMs = new Date(end).getTime() - new Date(start).getTime();
+      return diffMs >= 3600000 ? null : { endBeforeStart: true };
+    };
+  }
 
   ngOnInit(): void {
     this.venueService.getVenues().subscribe(res => {
@@ -259,9 +288,21 @@ export class EventFormComponent implements OnInit {
   }
 
   onSubmit(): void {
+    this.eventForm.markAllAsTouched();
+
     if (this.eventForm.invalid) {
-      this.eventForm.markAllAsTouched();
-      this.toastService.warning('Please fill all required fields.');
+      // Give specific error messages to guide the user
+      const errors: string[] = [];
+      if (this.f['title'].errors) errors.push('Event title is invalid');
+      if (this.f['description'].errors?.['required']) errors.push('Description is required');
+      if (this.f['description'].errors?.['minlength']) errors.push(`Description too short (${this.descLen}/50 chars)`);
+      if (this.f['startDate'].errors?.['required']) errors.push('Start date is required');
+      if (this.f['startDate'].errors?.['pastDate']) errors.push('Start date must be in the future');
+      if (this.f['endDate'].errors?.['required']) errors.push('End date is required');
+      if (this.eventForm.errors?.['endBeforeStart']) errors.push('End date must be at least 1 hour after start');
+      if (this.f['category'].errors) errors.push('Category is required');
+
+      this.toastService.error(errors.length ? errors[0] : 'Please fix the errors in the form.', 'Validation Error');
       return;
     }
 
@@ -275,7 +316,7 @@ export class EventFormComponent implements OnInit {
     formData.append('capacity', val.capacity);
     formData.append('startDate', new Date(val.startDate).toISOString());
     formData.append('endDate', new Date(val.endDate).toISOString());
-    if (val.venue) formData.append('venue', val.venue);
+    if (val.venue) formData.append('venueId', val.venue);
     if (val.tagsInput) {
       const tags = val.tagsInput.split(',').map((t: string) => t.trim()).filter(Boolean);
       formData.append('tags', JSON.stringify(tags));

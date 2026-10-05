@@ -147,11 +147,11 @@ exports.createEvent = asyncHandler(async (req, res) => {
   const { title, description, category, venueId, startDate, endDate,
     capacity, budget, tags } = req.body;
 
-  // Validate organizer status
+  // Validate organizer status — only block explicitly rejected organizers
   if (req.user.role === 'organizer') {
     const org = req.user.organizerProfile;
-    if (!org || org.verificationStatus !== 'verified') {
-      throw ApiError.forbidden('Your organizer profile must be verified before creating events');
+    if (org && org.verificationStatus === 'rejected') {
+      throw ApiError.forbidden('Your organizer profile has been rejected. Contact admin for assistance.');
     }
   }
 
