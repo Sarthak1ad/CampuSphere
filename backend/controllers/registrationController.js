@@ -416,7 +416,10 @@ exports.getAttendees = asyncHandler(async (req, res) => {
 
   // Sanitize fields based on role: students see name, interests, avatar for networking
   const studentFields = req.user.role === 'student' ? 'name interests avatar' : 'name email phone avatar';
+  // Include qrToken for organizer/admin so the check-in scanner can use click-to-load
+  const selectFields = req.user.role !== 'student' ? 'status qrToken checkedInAt waitlistPosition createdAt' : undefined;
   let query = Registration.find(filter)
+    .select(selectFields || '')
     .populate('student', studentFields);
 
 

@@ -31,11 +31,17 @@ import { CommonModule } from '@angular/common';
             <div class="token-box-header">
               <span><i class="fa-solid fa-key" style="color:var(--primary);"></i> Attendance Check-in Token:</span>
               <button type="button" class="btn-copy" (click)="copyToken()">
-                <i class="fa-regular fa-copy"></i> {{ copied ? 'Copied!' : 'Copy' }}
+                <i class="fa-regular fa-copy"></i> {{ copied ? 'Copied!' : 'Copy Token' }}
               </button>
             </div>
             <code class="token-code">{{ qrToken }}</code>
           </div>
+
+          <!-- Token loading state if no token yet -->
+          <div class="token-box token-loading" *ngIf="!qrToken">
+            <span><i class="fa-solid fa-spinner fa-spin" style="color:var(--primary);"></i> &nbsp;Loading your attendance token...</span>
+          </div>
+
 
           <!-- Ticket Details Meta Card -->
           <div class="ticket-meta">
@@ -189,6 +195,14 @@ import { CommonModule } from '@angular/common';
     }
     .guide-title { font-weight: 700; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.4rem; }
     .guide-list { margin: 0; padding-left: 1.2rem; line-height: 1.5; }
+    .token-loading {
+      display: flex;
+      align-items: center;
+      font-size: 0.82rem;
+      color: #92400E;
+      font-weight: 600;
+      padding: 0.65rem 1rem;
+    }
   `]
 })
 export class QrModalComponent {
@@ -215,4 +229,5 @@ export class QrModalComponent {
     window.print();
   }
 }
+
 

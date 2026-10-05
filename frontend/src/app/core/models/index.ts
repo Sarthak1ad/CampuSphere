@@ -87,9 +87,12 @@ export interface Registration {
   student: User | string;
   status: RegistrationStatus;
   qrToken?: string;
-  qrDataUrl?: string;
+  qrDataUrl?: string;       // alias returned by backend
+  qrCodeDataUrl?: string;   // native field returned by getMyRegistrations
   checkedInAt?: string;
+  waitlistPosition?: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Feedback {
