@@ -34,8 +34,12 @@ export class EventService {
     return this.http.post<ApiResponse<Event>>(this.apiUrl, formData);
   }
 
-  updateEvent(id: string, formData: FormData): Observable<ApiResponse<Event>> {
-    return this.http.put<ApiResponse<Event>>(`${this.apiUrl}/${id}`, formData);
+  updateEvent(id: string, data: FormData | any): Observable<ApiResponse<Event>> {
+    return this.http.put<ApiResponse<Event>>(`${this.apiUrl}/${id}`, data);
+  }
+
+  updateEventStatus(id: string, status: string, adminNote?: string): Observable<ApiResponse<Event>> {
+    return this.http.put<ApiResponse<Event>>(`${this.apiUrl}/${id}`, { status, adminNote });
   }
 
   updateStatus(id: string, status: string, rejectionReason?: string): Observable<ApiResponse<Event>> {

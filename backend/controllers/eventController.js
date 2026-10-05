@@ -239,6 +239,9 @@ exports.updateEvent = asyncHandler(async (req, res) => {
 
   const allowedUpdates = ['title', 'description', 'category', 'startDate', 'endDate',
     'capacity', 'budget', 'tags', 'posterUrl'];
+  if (req.user.role === 'admin') {
+    allowedUpdates.push('status', 'adminNote');
+  }
   const updates = {};
   allowedUpdates.forEach(field => {
     if (req.body[field] !== undefined) updates[field] = req.body[field];
@@ -373,6 +376,20 @@ exports.archiveEvent = asyncHandler(async (req, res) => {
   // Only admin or the organizer who created it
   if (req.user.role !== 'admin' && event.organizer.toString() !== req.user._id.toString()) {
     throw ApiError.forbidden('Not authorized to delete or archive this event');
+  }
+
+  // Prevent club organizers from deleting an ongoing/live event
+  if (req.user.role !== 'admin') {
+    const now = new Date();
+    const startDate = new Date(event.startDate);
+    const endDate = new Date(event.endDate);
+
+    const isOngoing = event.status === 'published' && now >= startDate && now <= endDate;
+    if (isOngoing) {
+      throw ApiError.badRequest(
+        'Cannot delete an ongoing event while it is actively in progress. Ongoing events cannot be deleted by club organizers. Please contact an administrator if urgent cancellation is required.'
+      );
+    }
   }
 
   // MongoDB Concept: Soft Delete via findByIdAndUpdate
