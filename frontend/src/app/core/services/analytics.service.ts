@@ -45,6 +45,10 @@ export class AnalyticsService {
     return this.http.get<ApiResponse<any>>(`${this.apiUrl}/organizer/events`, { params });
   }
 
+  getCampusEventSummary(): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/organizer/campus-summary`);
+  }
+
   getCompletedEventReport(eventId: string): Observable<ApiResponse<any>> {
     return this.http.get<ApiResponse<any>>(`${this.apiUrl}/organizer/events/${eventId}/report`);
   }

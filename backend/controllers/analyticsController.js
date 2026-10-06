@@ -28,7 +28,7 @@ const { Parser } = require('json2csv');
 // ── ADMIN: DASHBOARD OVERVIEW ─────────────────────────────────────────────────
 exports.adminDashboard = asyncHandler(async (req, res) => {
   // MongoDB Concept: Running multiple aggregation pipelines in parallel with Promise.all()
-  const [eventStats, userStats, registrationStats, recentActivity] = await Promise.all([
+  const [eventStats, userStats, registrationStats, recentActivity, registrationTotals] = await Promise.all([
 
     // Pipeline 1: Event statistics by status
     // $facet: runs multiple sub-pipelines on the SAME input in a single DB pass!
@@ -89,8 +89,23 @@ exports.adminDashboard = asyncHandler(async (req, res) => {
       },
       { $unwind: { path: '$actorDetails', preserveNullAndEmpty: true } },
     ]),
+
+    // Keep dashboard totals based on live registration records rather than the
+    // event counter, which can include historical/cancelled records.
+    Registration.aggregate([
+      { $match: { status: { $in: ['registered', 'checked-in', 'waitlisted'] } } },
+      {
+        $group: {
+          _id: null,
+          totalRegistrations: { $sum: 1 },
+          totalCheckedIn: { $sum: { $cond: [{ $eq: ['$status', 'checked-in'] }, 1, 0] } },
+        },
+      },
+    ]),
   ]);
 
+  const eventSummary = eventStats[0] || {};
+  const activeUsers = userStats.reduce((total, item) => total + item.count, 0);
   res.json({
     success: true,
     data: {
@@ -98,6 +113,14 @@ exports.adminDashboard = asyncHandler(async (req, res) => {
       users: userStats,
       registrationTrend: registrationStats,
       recentActivity,
+      // Flat fields are consumed by the admin dashboard cards.
+      totalEvents: (eventSummary.byStatus || []).reduce((total, item) => total + item.count, 0),
+      totalStudents: userStats.find(item => item._id === 'student')?.count || 0,
+      totalOrganizers: userStats.find(item => item._id === 'organizer')?.count || 0,
+      totalActiveUsers: activeUsers,
+      totalRegistrations: registrationTotals[0]?.totalRegistrations || 0,
+      totalCheckedIn: registrationTotals[0]?.totalCheckedIn || 0,
+      avgRating: eventSummary.totalViews?.[0]?.avgRating || 0,
     },
   });
 });
@@ -192,7 +215,20 @@ exports.attendanceAnalytics = asyncHandler(async (req, res) => {
 
   const buckets = await Registration.aggregate(bucketPipeline);
 
-  res.json({ success: true, data: { events: results, buckets } });
+  const totals = results.reduce((summary, event) => ({
+    registered: summary.registered + event.totalRegistered - event.cancelled - event.waitlisted,
+    checkedIn: summary.checkedIn + event.checkedIn,
+    waitlisted: summary.waitlisted + event.waitlisted,
+  }), { registered: 0, checkedIn: 0, waitlisted: 0 });
+
+  res.json({
+    success: true,
+    data: {
+      events: results,
+      buckets,
+      ...totals,
+    },
+  });
 });
 
 // ── ORGANIZER: EVENT ANALYTICS ────────────────────────────────────────────────
@@ -235,13 +271,30 @@ exports.organizerEventAnalytics = asyncHandler(async (req, res) => {
         views: 1,
         clicks: 1,
         avgRating: 1,
-        totalRegistrations: { $size: '$registrations' },
+        totalRegistrations: {
+          $size: {
+            $filter: {
+              input: '$registrations',
+              as: 'r',
+              cond: { $in: ['$$r.status', ['registered', 'checked-in']] },
+            },
+          },
+        },
         checkedIn: {
           $size: {
             $filter: {
               input: '$registrations',
               as: 'r',
               cond: { $eq: ['$$r.status', 'checked-in'] },
+            },
+          },
+        },
+        waitlisted: {
+          $size: {
+            $filter: {
+              input: '$registrations',
+              as: 'r',
+              cond: { $eq: ['$$r.status', 'waitlisted'] },
             },
           },
         },
@@ -279,7 +332,105 @@ exports.organizerEventAnalytics = asyncHandler(async (req, res) => {
     },
   ]);
 
-  res.json({ success: true, data: { events: analytics, summary: summary[0] } });
+  const eventBreakdown = analytics.map(event => ({
+    eventTitle: event.title,
+    totalRegistered: event.totalRegistrations,
+    checkedIn: event.checkedIn,
+    waitlisted: event.waitlisted,
+    attendanceRate: event.totalRegistrations > 0
+      ? (event.checkedIn / event.totalRegistrations) * 100
+      : 0,
+    avgRating: event.avgFeedbackRating || event.avgRating || 0,
+  }));
+  const totals = eventBreakdown.reduce((result, event) => ({
+    totalRegistrations: result.totalRegistrations + event.totalRegistered,
+    checkedIn: result.checkedIn + event.checkedIn,
+    waitlisted: result.waitlisted + event.waitlisted,
+  }), { totalRegistrations: 0, checkedIn: 0, waitlisted: 0 });
+  const byCategory = analytics.reduce((categories, event) => {
+    const category = categories.find(item => item._id === event.category);
+    if (category) category.totalEvents += 1;
+    else categories.push({ _id: event.category, totalEvents: 1 });
+    return categories;
+  }, []);
+  const summaryData = summary[0] || {};
+
+  res.json({
+    success: true,
+    data: {
+      ...summaryData,
+      totalRegistrations: totals.totalRegistrations,
+      attendanceRate: totals.totalRegistrations
+        ? (totals.checkedIn / totals.totalRegistrations) * 100
+        : 0,
+      byCategory,
+      eventBreakdown,
+      // Preserve the detailed response for consumers that need event fields.
+      events: analytics,
+      summary: summaryData,
+    },
+  });
+});
+
+// ── ORGANIZER: CAMPUS-WIDE SUMMARY ──────────────────────────────────────────
+// This endpoint intentionally returns aggregate counts only. Detailed event
+// analytics remain restricted to the authenticated organizer above.
+exports.campusEventSummary = asyncHandler(async (req, res) => {
+  const campusEventFilter = {
+    status: { $nin: ['draft', 'rejected', 'cancelled', 'archived'] },
+  };
+
+  const [eventCounts, registrationCounts] = await Promise.all([
+    Event.aggregate([
+      { $match: campusEventFilter },
+      {
+        $group: {
+          _id: null,
+          totalEvents: { $sum: 1 },
+          publishedEvents: { $sum: { $cond: [{ $eq: ['$status', 'published'] }, 1, 0] } },
+          completedEvents: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+        },
+      },
+    ]),
+    Registration.aggregate([
+      {
+        $lookup: {
+          from: 'events',
+          localField: 'event',
+          foreignField: '_id',
+          as: 'event',
+        },
+      },
+      { $unwind: '$event' },
+      { $match: { 'event.status': { $in: ['pending', 'published', 'completed'] } } },
+      {
+        $group: {
+          _id: null,
+          totalRegistrations: {
+            $sum: {
+              $cond: [
+                { $in: ['$status', ['registered', 'checked-in']] },
+                1,
+                0,
+              ],
+            },
+          },
+          totalCheckedIn: { $sum: { $cond: [{ $eq: ['$status', 'checked-in'] }, 1, 0] } },
+        },
+      },
+    ]),
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      totalEvents: eventCounts[0]?.totalEvents || 0,
+      publishedEvents: eventCounts[0]?.publishedEvents || 0,
+      completedEvents: eventCounts[0]?.completedEvents || 0,
+      totalRegistrations: registrationCounts[0]?.totalRegistrations || 0,
+      totalCheckedIn: registrationCounts[0]?.totalCheckedIn || 0,
+    },
+  });
 });
 
 // ── ORGANIZER: COMPLETED EVENT REPORT ───────────────────────────────────────
