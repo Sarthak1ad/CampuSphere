@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, inject } from '@angular/core';
+import { AfterViewChecked, Component, ElementRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
@@ -62,7 +62,7 @@ Chart.register(...registerables);
     @media (max-width:800px) { .report-grid { grid-template-columns:1fr; } .page-header-row { gap:1rem; } }
   `]
 })
-export class EventReportComponent implements AfterViewInit, OnDestroy {
+export class EventReportComponent implements AfterViewChecked, OnInit, OnDestroy {
   private analyticsService = inject(AnalyticsService);
   private route = inject(ActivatedRoute);
   @ViewChild('participantChart') participantChart?: ElementRef<HTMLCanvasElement>;
@@ -76,7 +76,11 @@ export class EventReportComponent implements AfterViewInit, OnDestroy {
     return this.report?.tasks?.filter((task: any) => task.completed).length || 0;
   }
 
-  ngAfterViewInit(): void {
+  ngAfterViewChecked(): void {
+    this.renderChart();
+  }
+
+  ngOnInit(): void {
     const eventId = this.route.snapshot.paramMap.get('id');
     if (!eventId) {
       this.isLoading = false;
@@ -87,7 +91,6 @@ export class EventReportComponent implements AfterViewInit, OnDestroy {
       next: response => {
         this.isLoading = false;
         this.report = response.data;
-        setTimeout(() => this.renderChart());
       },
       error: error => {
         this.isLoading = false;
@@ -98,7 +101,7 @@ export class EventReportComponent implements AfterViewInit, OnDestroy {
 
   private renderChart(): void {
     const canvas = this.participantChart?.nativeElement;
-    if (!canvas || !this.report) return;
+    if (!canvas || !this.report || this.chart) return;
     const participantLabels = ['Registered', 'Checked in', 'Waitlisted', 'Cancelled', 'No-show'];
     const participantCounts = participantLabels.map(label => {
       const status = label.toLowerCase().replace(' ', '-');
