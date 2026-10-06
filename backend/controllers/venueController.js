@@ -112,11 +112,46 @@ exports.updateVenue = asyncHandler(async (req, res) => {
 });
 
 exports.deleteVenue = asyncHandler(async (req, res) => {
-  const venue = await Venue.findByIdAndDelete(req.params.id);
-  if (!venue) throw ApiError.notFound('Venue not found');
+  const venue = await Venue.findById(req.params.id);
+  if (!venue || venue.isArchived) throw ApiError.notFound('Venue not found');
 
-  await auditLog({ actor: req.user, action: 'venue.delete', entity: 'Venue', entityId: venue._id, ipAddress: req.ip });
-  res.json({ success: true, message: 'Venue deleted permanently' });
+  // Check if any scheduled, published, or ongoing events are assigned to this venue
+  const Event = require('../models/Event');
+  const now = new Date();
+  const assignedEvents = await Event.find({
+    venue: venue._id,
+    status: { $in: ['published', 'pending', 'ongoing'] },
+    endDate: { $gte: now }
+  }).select('title startDate endDate status');
+
+  if (assignedEvents.length > 0) {
+    const ongoingEvent = assignedEvents.find(e => new Date(e.startDate) <= now && new Date(e.endDate) >= now);
+    if (ongoingEvent) {
+      throw ApiError.badRequest(
+        `⚠️ Cannot delete venue "${venue.name}"! The live event "${ongoingEvent.title}" is currently ONGOING at this venue right now. Please wait until the event concludes or reassign the event venue before deleting.`
+      );
+    }
+
+    const firstEvent = assignedEvents[0];
+    const formattedDate = new Date(firstEvent.startDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    throw ApiError.badRequest(
+      `⚠️ Cannot delete venue "${venue.name}"! It is currently assigned to ${assignedEvents.length} scheduled event(s), including "${firstEvent.title}" on ${formattedDate}. Please change or reassign the venue for these events before deleting.`
+    );
+  }
+
+  // MongoDB Concept: Soft Delete via isArchived: true
+  await Venue.findByIdAndUpdate(req.params.id, { $set: { isArchived: true } });
+
+  await auditLog({
+    actor: req.user,
+    action: 'venue.delete',
+    entity: 'Venue',
+    entityId: venue._id,
+    meta: { name: venue.name, type: 'soft_delete' },
+    ipAddress: req.ip
+  });
+
+  res.json({ success: true, message: `Venue "${venue.name}" deleted successfully` });
 });
 
 exports.archiveVenue = asyncHandler(async (req, res) => {

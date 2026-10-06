@@ -47,7 +47,7 @@ import { Venue } from '../../../core/models';
           </div>
           <div class="venue-actions">
             <button class="btn btn-sm btn-outline" (click)="editVenue(venue)">Edit</button>
-            <button class="btn btn-sm btn-danger" (click)="deleteVenue(venue._id)">Delete</button>
+            <button class="btn btn-sm btn-danger" (click)="deleteVenue(venue)">Delete</button>
           </div>
         </div>
       </div>
@@ -261,14 +261,16 @@ export class AdminVenuesComponent implements OnInit {
     });
   }
 
-  deleteVenue(id: string): void {
-    if (!confirm('Delete this venue?')) return;
-    this.venueService.deleteVenue(id).subscribe({
+  deleteVenue(venue: Venue): void {
+    if (!confirm(`Are you sure you want to delete venue "${venue.name}"?`)) return;
+    this.venueService.deleteVenue(venue._id).subscribe({
       next: () => {
-        this.venues.update(list => list.filter(v => v._id !== id));
-        this.toastService.success('Venue deleted.');
+        this.venues.update(list => list.filter(v => v._id !== venue._id));
+        this.toastService.success(`Venue "${venue.name}" deleted successfully.`);
       },
-      error: err => this.toastService.error(err.error?.message || 'Delete failed.')
+      error: err => {
+        this.toastService.error(err.error?.message || 'Failed to delete venue.', 'Venue In Use');
+      }
     });
   }
 }
