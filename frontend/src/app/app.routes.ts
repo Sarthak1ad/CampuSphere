@@ -69,6 +69,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/organizer/event-list/organizer-event-list.component').then(m => m.OrganizerEventListComponent)
       },
       {
+        path: 'event-history',
+        loadComponent: () => import('./features/organizer/event-history/organizer-event-history.component').then(m => m.OrganizerEventHistoryComponent)
+      },
+      {
         path: 'campus-events',
         loadComponent: () => import('./features/organizer/campus-events/campus-events.component').then(m => m.CampusEventsComponent)
       },
@@ -107,6 +111,10 @@ export const routes: Routes = [
       {
         path: 'events',
         loadComponent: () => import('./features/admin/events/admin-events.component').then(m => m.AdminEventsComponent)
+      },
+      {
+        path: 'event-history',
+        loadComponent: () => import('./features/admin/event-history/admin-event-history.component').then(m => m.AdminEventHistoryComponent)
       },
       {
         path: 'db-lab',
