@@ -21,6 +21,9 @@ import { Event, Registration } from '../../../core/models';
       <div class="card" style="margin-bottom:1.5rem;padding:1.5rem;">
         <div class="form-group" style="margin:0;">
           <label class="form-label" style="font-weight:700;">Select Event to Check-In</label>
+          <p *ngIf="publishedEvents().length === 0" style="margin:.5rem 0 0;color:var(--text-muted);">
+            No events are currently ongoing. Check-in opens when an event starts and closes when it ends.
+          </p>
           <select class="form-select" [(ngModel)]="selectedEventId" (change)="onEventChange()">
             <option value="">-- Choose an Event --</option>
             <option *ngFor="let event of publishedEvents()" [value]="event._id">
@@ -293,9 +296,13 @@ export class CheckInComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.eventService.getEvents({ status: 'published', limit: 50 }).subscribe(res => {
       if (res.success && res.data) {
-        this.publishedEvents.set(res.data);
-        if (res.data.length > 0 && !this.selectedEventId) {
-          this.selectedEventId = res.data[0]._id;
+        const activeEvents = res.data.filter(event => {
+          const now = Date.now();
+          return new Date(event.startDate).getTime() <= now && now <= new Date(event.endDate).getTime();
+        });
+        this.publishedEvents.set(activeEvents);
+        if (activeEvents.length > 0 && !this.selectedEventId) {
+          this.selectedEventId = activeEvents[0]._id;
           this.loadAttendees();
         }
       }
@@ -467,4 +474,3 @@ export class CheckInComponent implements OnInit, OnDestroy {
     return Math.round((this.getCheckedInCount() / total) * 100);
   }
 }
-

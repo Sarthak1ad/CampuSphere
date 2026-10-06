@@ -274,14 +274,18 @@ exports.cancelRegistration = asyncHandler(async (req, res) => {
 
 // ── CHECK-IN VIA QR TOKEN OR STUDENT ID ───────────────────────────────────────
 exports.checkIn = asyncHandler(async (req, res) => {
-  const { qrToken, studentId } = req.body;
-  const eventId = req.params.eventId;
+  const { qrToken, studentId, eventId: bodyEventId } = req.body;
+  const eventId = req.params.eventId || bodyEventId;
 
   let reg = null;
 
+  if (!eventId) {
+    throw ApiError.badRequest('Event is required for check-in');
+  }
+
   if (qrToken) {
     // MongoDB Concept: O(1) lookup using the qrToken index
-    reg = await Registration.findOne({ qrToken })
+    reg = await Registration.findOne({ qrToken, event: eventId })
       .populate('student', 'name email')
       .populate('event', 'title startDate endDate organizer');
   } else if (studentId && eventId) {
@@ -294,6 +298,10 @@ exports.checkIn = asyncHandler(async (req, res) => {
 
   if (!reg) throw ApiError.notFound('Invalid ticket or attendee not found');
 
+  const now = new Date();
+  if (now < reg.event.startDate || now > reg.event.endDate) {
+    throw ApiError.badRequest('Check-in is available only while the event is ongoing');
+  }
 
   // Verify organizer owns this event
   if (req.user.role === 'organizer') {
