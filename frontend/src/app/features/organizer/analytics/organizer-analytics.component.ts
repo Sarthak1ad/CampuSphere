@@ -23,6 +23,33 @@ import { Event } from '../../../core/models';
       </div>
 
       <ng-container *ngIf="!isLoading && analytics">
+        <!-- Campus-wide aggregate counts; no other organizer's event details are exposed. -->
+        <div class="card campus-summary" *ngIf="campusSummary">
+          <div>
+            <h3 class="font-heading">Campus-wide events</h3>
+            <p>Aggregate activity across the campus. Your event details remain shown below.</p>
+          </div>
+          <div class="campus-summary-grid">
+            <div>
+              <strong>{{ campusSummary.totalEvents }}</strong>
+              <span>Total events</span>
+            </div>
+            <div>
+              <strong>{{ campusSummary.publishedEvents }}</strong>
+              <span>Published</span>
+            </div>
+            <div>
+              <strong>{{ campusSummary.completedEvents }}</strong>
+              <span>Completed</span>
+            </div>
+            <div>
+              <strong>{{ campusSummary.totalRegistrations }}</strong>
+              <span>Registrations</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="section-heading">Your event analytics</h3>
         <!-- KPI Cards -->
         <div class="kpi-grid" style="margin-bottom:2rem;">
           <div class="card kpi-card">
@@ -114,6 +141,15 @@ import { Event } from '../../../core/models';
   `,
   styles: [`
     .loading-state { text-align:center;padding:4rem;color:var(--text-muted);display:flex;flex-direction:column;align-items:center;gap:1rem; }
+    .campus-summary { display:flex;justify-content:space-between;align-items:center;gap:2rem;margin-bottom:2rem;padding:1.5rem; }
+    .campus-summary h3 { margin:0 0 0.35rem; }
+    .campus-summary p { margin:0;color:var(--text-muted);font-size:0.85rem; }
+    .campus-summary-grid { display:grid;grid-template-columns:repeat(4,minmax(85px,1fr));gap:1rem; }
+    .campus-summary-grid div { min-width:85px;text-align:center; }
+    .campus-summary-grid strong { display:block;font-size:1.5rem;color:var(--primary); }
+    .campus-summary-grid span { display:block;color:var(--text-muted);font-size:0.75rem; }
+    .section-heading { margin:0 0 1rem; }
+    @media (max-width:900px) { .campus-summary { align-items:stretch;flex-direction:column; } }
     .kpi-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:1rem; }
     @media (max-width:900px) { .kpi-grid { grid-template-columns:repeat(2,1fr); } }
     .kpi-card { display:flex;flex-direction:column;align-items:center;text-align:center;padding:1.5rem;gap:0.75rem; }
@@ -134,9 +170,16 @@ export class OrganizerAnalyticsComponent implements OnInit {
   private analyticsService = inject(AnalyticsService);
 
   analytics: any = null;
+  campusSummary: any = null;
   isLoading = true;
 
   ngOnInit(): void {
+    this.analyticsService.getCampusEventSummary().subscribe({
+      next: res => {
+        if (res.success && res.data) this.campusSummary = res.data;
+      }
+    });
+
     this.analyticsService.getOrganizerEventAnalytics().subscribe({
       next: res => {
         this.isLoading = false;
