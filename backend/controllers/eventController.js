@@ -26,22 +26,30 @@ exports.getEvents = asyncHandler(async (req, res) => {
     startDate, endDate, organizer, sort = '-startDate',
     lat, lng, radius = 10, // km
     tags,
+    myEvents,
+    scope,
   } = req.query;
 
   // Build filter query dynamically
   const filter = {};
 
-  // Only non-admin users see published events by default
-  if (req.user?.role === 'admin') {
-    if (status) filter.status = status;
-    else filter.status = { $ne: 'archived' };
-  } else if (req.user?.role === 'organizer') {
-    filter.organizer = req.user._id;
-    if (status) filter.status = status;
-    else filter.status = { $ne: 'archived' };
+  // Status filtering:
+  // Admins and Organizers (or scope='all') can view all non-archived events across campus
+  if (status) {
+    filter.status = status;
+  } else if (req.user?.role === 'admin' || req.user?.role === 'organizer' || scope === 'all') {
+    filter.status = { $ne: 'archived' };
   } else {
-    // Students and guests see only published events
+    // Students and unauthenticated guests see only published events
     filter.status = 'published';
+  }
+
+  // Organizer filtering:
+  // Only filter by own organizer ID if explicitly requested via myEvents='true' or organizer='me'
+  if (myEvents === 'true' || organizer === 'me') {
+    if (req.user) filter.organizer = req.user._id;
+  } else if (organizer && organizer !== 'all') {
+    filter.organizer = organizer;
   }
 
   // Category filter — MongoDB Concept: Exact match on indexed field
@@ -54,7 +62,6 @@ exports.getEvents = asyncHandler(async (req, res) => {
     if (endDate) filter.startDate.$lte = new Date(endDate);
   }
 
-  if (organizer) filter.organizer = organizer;
   if (tags) filter.tags = { $in: tags.split(',') };
 
   // MongoDB Concept: Full-Text Search using $text operator

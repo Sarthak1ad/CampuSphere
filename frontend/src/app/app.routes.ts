@@ -69,6 +69,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/organizer/event-list/organizer-event-list.component').then(m => m.OrganizerEventListComponent)
       },
       {
+        path: 'campus-events',
+        loadComponent: () => import('./features/organizer/campus-events/campus-events.component').then(m => m.CampusEventsComponent)
+      },
+      {
         path: 'create-event',
         loadComponent: () => import('./features/organizer/event-form/event-form.component').then(m => m.EventFormComponent)
       },

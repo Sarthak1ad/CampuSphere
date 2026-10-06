@@ -20,9 +20,12 @@ import { Event } from '../../../core/models';
           </div>
           <h1 class="font-heading">{{ getOrgName() }}</h1>
           <p>Manage your events, track attendance, and view engagement analytics.</p>
-          <div class="hero-actions" style="margin-top:1rem; display:flex; gap:0.75rem;">
+          <div class="hero-actions" style="margin-top:1rem; display:flex; gap:0.75rem; flex-wrap:wrap;">
             <a routerLink="/organizer/create-event" class="btn" style="background:#FFFFFF;color:var(--primary);font-weight:700;">
               <i class="fa-solid fa-plus-circle"></i> Create Event
+            </a>
+            <a routerLink="/organizer/campus-events" class="btn" style="background:rgba(255,255,255,0.2);color:#FFFFFF;border:1px solid rgba(255,255,255,0.4);font-weight:600;">
+              <i class="fa-solid fa-calendar-week"></i> Campus Schedule
             </a>
             <a routerLink="/organizer/check-in" class="btn" style="background:rgba(255,255,255,0.15);color:#FFFFFF;border:1px solid rgba(255,255,255,0.3);">
               <i class="fa-solid fa-qrcode"></i> QR Check-in
@@ -142,7 +145,7 @@ export class OrganizerDashboardComponent implements OnInit {
   stats: any[] = [];
 
   ngOnInit(): void {
-    this.eventService.getEvents({ limit: 20 }).subscribe({
+    this.eventService.getEvents({ myEvents: 'true', limit: 20 }).subscribe({
       next: res => {
         this.isLoading = false;
         if (res.success && res.data) {

@@ -163,7 +163,7 @@ export class OrganizerEventListComponent implements OnInit {
   isLoading = true;
 
   ngOnInit(): void {
-    this.eventService.getEvents({ limit: 50 }).subscribe({
+    this.eventService.getEvents({ myEvents: 'true', limit: 50 }).subscribe({
       next: res => {
         this.isLoading = false;
         if (res.success && res.data) this.events.set(res.data);

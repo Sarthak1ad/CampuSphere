@@ -59,6 +59,10 @@ import { AuthService } from '../../../core/services/auth.service';
             <span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span>
             <span class="nav-text">My Events</span>
           </a>
+          <a routerLink="/organizer/campus-events" routerLinkActive="active" class="nav-item">
+            <span class="nav-icon"><i class="fa-solid fa-calendar-week"></i></span>
+            <span class="nav-text">Campus Schedule</span>
+          </a>
           <a routerLink="/organizer/create-event" routerLinkActive="active" class="nav-item">
             <span class="nav-icon"><i class="fa-solid fa-plus-circle"></i></span>
             <span class="nav-text">Create Event</span>
