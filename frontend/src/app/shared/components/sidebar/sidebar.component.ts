@@ -59,6 +59,10 @@ import { AuthService } from '../../../core/services/auth.service';
             <span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span>
             <span class="nav-text">My Events</span>
           </a>
+          <a routerLink="/organizer/event-history" routerLinkActive="active" class="nav-item">
+            <span class="nav-icon"><i class="fa-solid fa-clock-rotate-left"></i></span>
+            <span class="nav-text">Event History</span>
+          </a>
           <a routerLink="/organizer/campus-events" routerLinkActive="active" class="nav-item">
             <span class="nav-icon"><i class="fa-solid fa-calendar-week"></i></span>
             <span class="nav-text">Campus Schedule</span>
@@ -86,6 +90,10 @@ import { AuthService } from '../../../core/services/auth.service';
           <a routerLink="/admin/events" routerLinkActive="active" class="nav-item">
             <span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span>
             <span class="nav-text">All Events</span>
+          </a>
+          <a routerLink="/admin/event-history" routerLinkActive="active" class="nav-item">
+            <span class="nav-icon"><i class="fa-solid fa-clock-rotate-left"></i></span>
+            <span class="nav-text">Event History</span>
           </a>
           <a routerLink="/admin/db-lab" routerLinkActive="active" class="nav-item db-lab-link">
             <span class="nav-icon"><i class="fa-solid fa-database"></i></span>
