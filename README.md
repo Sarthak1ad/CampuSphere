@@ -315,8 +315,6 @@ Located in the Admin dashboard under **DB Lab (`/admin/db-lab`)**:
 #### 9. What is the difference between embedding and referencing in your data models?
 > **Answer:** We **embedded** data that is always accessed together and has 1:1 or 1:bounded-few relationships, such as `organizerProfile` in `User`, and `budget.breakdown` in `Event`. We **referenced** (using `ObjectId` with `ref`) entities with 1:many or many:many relationships that grow unboundedly, such as `Event.organizer -> User`, `Event.venue -> Venue`, and `Registration.student -> User`.
 
-#### 10. How does your system handle soft deletes?
-> **Answer:** Instead of hard-deleting records which destroys historical analytics and referential integrity, we set `isArchived: true` or `status: 'archived'`. Query helper methods and default filters `{ isArchived: { $ne: true } }` exclude them from active user listings while preserving audit trails and analytics.
 
 ---
 
