@@ -319,4 +319,4 @@ Located in the Admin dashboard under **DB Lab (`/admin/db-lab`)**:
 ---
 
 ## 📄 License & Academic Attribution
-Developed as an ADBMS Capstone Project. Educational use and academic evaluation permitted.
+Developed as an ADBMS Capstone Project. Educational use and academic evaluation permitted
