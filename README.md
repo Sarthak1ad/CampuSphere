@@ -313,7 +313,7 @@ Located in the Admin dashboard under **DB Lab (`/admin/db-lab`)**:
 > **Answer:** We leveraged multi-stage pipelines: `$match` filters active documents early to utilize indexes; `$lookup` performs left-outer joins; `$unwind` deconstructs arrays; `$group` computes aggregates like `$avg`, `$sum`, and `$count`; `$facet` executes multi-faceted aggregations in parallel; and `$project` shapes the final response.
 
 #### 9. What is the difference between embedding and referencing in your data models?
-> **Answer:** We **embedded** data that is always accessed together and has 1:1 or 1:bounded-few relationships, such as `organizerProfile` in `User`, and `budget.breakdown` in `Event`. We **referenced** (using `ObjectId` with `ref`) entities with 1:many or many:many relationships that grow unboundedly, such as `Event.organizer -> User`, `Event.venue -> Venue`, and `Registration.student -> User`.
+> **Answer:** We **embedded** data that is always accessed together and has 1:1 or 1:bounded-few relationships, such as `organizerProfile` in `User`, and `budget.breakdown` in `Event`. We **referenced** (using `ObjectId` with `ref`) entities with 1:many or many:many relationships that grow unboundedly, such as `Event.organizer -> User`, `Event.venue -> Venue`, and `Registration.student -> User`
 
 
 ---
